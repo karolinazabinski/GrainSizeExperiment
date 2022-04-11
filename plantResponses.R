@@ -62,14 +62,14 @@ meta$totalGrowth[meta$totalGrowth == 0] <- NA
 meta <- meta %>% mutate(growthRate = totalGrowth/DaysGrowing)
 meta$growthRate[meta$growthRate == 0] <- NA
 
-meta$productivity <- as.numeric(meta$totalGrowth*meta$ShootWidth_mm/meta$DaysGrowing) #all NAs remained NAs
+meta$productivity <- as.numeric(meta$totalGrowth*meta$ShootWidth_mm/meta$DaysGrowing/100) #all NAs remained NAs
+
+#No SS
+meta <- meta %>% mutate(NoSS = ShootCount-1)
+meta$NoSS[meta$NoSS == 0] <- NA
 
 #average ss side
-meta <- meta %>% mutate(avgSsSize = side.g/(ShootCount-1))
-meta$avgSsSize[meta$avgSsSize == 0] <- NA
-meta$avgSsSize[meta$avgSsSize == Inf] <- NA
-meta$avgSsSize[meta$avgSsSize == -Inf] <- NA
-meta$avgSsSize[meta$avgSsSize == NaN] <- NA
+meta <- meta %>% mutate(avgSsSize = side.g/NoSS)
 
 
 
@@ -151,7 +151,7 @@ rhSul.regclass <- ggplot(rhSul, aes(x= rhLength, y= sulfide.um, color= poptreat)
 rhSul.regclass 
 
 #############################
-##PROPORTION ROOT HAIR AREA##
+##REG PROPORTION ROOT HAIR AREA TO SULF##
 #############################
 #Selecting f2size and severity
 proprhSul <- meta %>% select (SampleID:TankID, propotion.root.hair.area.mm, sulfide.um, poptreat)
@@ -180,14 +180,131 @@ abSul.regclass <- ggplot(abSul, aes(x= ab, y= sulfide.um, color= poptreat)) + ge
   geom_smooth(method=lm) 
 abSul.regclass 
 
+
+###########################
+##Avg SS Size vs Below##
+##########################
+avgSSBel <- meta %>% select (SampleID:TankID, avgSsSize, rhiz.g, sumBel, poptreat)
+hist(avgSSBel$avgSsSize) #pretty norm right outlier
+hist(avgSSBel$rhiz.g) #broad right tail dist
+
+avgSSBel.regclass <- ggplot(avgSSBel, aes(x= sumBel, y= avgSsSize, color= poptreat)) + geom_point(size=3) +
+  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
+  ylab(expression(paste(F[1], "Avg Ss Size (g) vs Below (g)"))) +
+  geom_smooth(method=lm) 
+avgSSBel.regclass
+
+###########################
+##productivity vs Avg SS Size##
+##########################
+prodAvgSS <- meta %>% select (SampleID:TankID, avgSsSize, productivity, poptreat)
+hist(prodAvgSS$avgSsSize) #pretty norm right outlier
+hist(prodAvgSS$productivity) #norm
+
+prodAvgSS.regclass <- ggplot(prodAvgSS, aes(x= productivity, y= avgSsSize, color= poptreat)) + geom_point(size=3) +
+  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
+  ylab(expression(paste(F[1], "Avg SS Size (g) vs", F[0], "Productivity (cm^2)/day"))) +
+  geom_smooth(method=lm) 
+prodAvgSS.regclass
+
+###########################
+##longest root vs avg root hair length##
+##########################
+rootRh <- meta %>% select (SampleID:TankID, LongestRoot_mm, rhLength, poptreat)
+hist(rootRh$LongestRoot_mm) #pretty norm 
+hist(rootRh$rhLength) #right tailed
+
+rootRh.regclass <- ggplot(rootRh, aes(x= LongestRoot_mm, y= rhLength, color= poptreat)) + geom_point(size=3) +
+  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
+  ylab(expression(paste(F[0], "Longest root (mm) vs Average root hair lenght(cm)"))) +
+  geom_smooth(method=lm) 
+rootRh.regclass
+
+###########################
+##root vs proportion root hair area##
+##########################
+rhizR <- meta %>% select (SampleID:TankID, propotion.root.hair.area.mm, root.g, poptreat)
+hist(rhizR$propotion.root.hair.area.mm) #pretty norm 
+hist(rhizR$root.g) #right tailed
+
+rhizR.regclass <- ggplot(rhizR, aes(x= root.g, y= propotion.root.hair.area.mm, color= poptreat)) + geom_point(size=3) +
+  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
+  ylab(expression(paste(F[0], "root (g) vs propotion of root hair area"))) +
+  geom_smooth(method=lm) 
+rhizR.regclass
+
+###########################
+##root.g vs sulfide##
+##########################
+belSulf <- meta %>% select (SampleID:TankID, sumBel, sulfide.um, root.g, poptreat)
+hist(belSulf$root.g) # right tailed
+hist(belSulf$sulfide.um) #right tailed
+
+rhizR.regclass <- ggplot(belSulf, aes(x= root.g, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
+  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
+  ylab(expression(paste(F[0], "below (g) vs sulfide (um)"))) +
+  geom_smooth(method=lm) 
+rhizR.regclass
+
+###########################
+##prop root hair vs sulfide##
+##########################
+propRHSulf <- meta %>% select (SampleID:TankID, propotion.root.hair.area.mm, sulfide.um, poptreat)
+hist(propRHSulf$propotion.root.hair.area.mm) #norm
+hist(propRHSulf$sulfide.um) #right tailed
+
+propRHSulf.regclass <- ggplot(propRHSulf, aes(x= propotion.root.hair.area.mm, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
+  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
+  ylab(expression(paste(F[0], "proportion of root hairs vs sulfide (um)"))) +
+  geom_smooth(method=lm) 
+propRHSulf.regclass
+
+#removing outliers
+propRHSulf.out <- propRHSulf
+propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "2-10",]
+propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-1",]
+propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-2",]
+propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-11",]
+propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-12",]
+str(propRHSulf.out )
+droplevels(propRHSulf.out )
+hist(propRHSulf.out $sulfide.um)
+
+#without outliers
+propRHSulfOUT.regclass <- ggplot(propRHSulf.out, aes(x= propotion.root.hair.area.mm, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
+  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
+  ylab(expression(paste(F[0], "proportion of root hairs vs sulfide (um)"))) +
+  geom_smooth(method=lm) 
+propRHSulfOUT.regclass 
+
+##ARRANGING TWO TGP PLOTS FOR A:B
+grid.arrange(propRHSulf.regclass, propRHSulfOUT.regclass, ncol=2)
+
 ###########################
 ##BOXPLOT OF PRODUCTIVITY##
 ##########################
 prod <- meta %>% select (SampleID:TankID, productivity, poptreat)
 
-prod.plot <- ggplot(prod, aes(x=PlantOrigin, y=productivity, fill=SedOrigin)) +
-  geom_boxplot()
+set.seed(5)
+prod.plot <- ggplot(prod, aes(x=PlantOrigin, y=productivity, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
 prod.plot
+
+#ANALYSIS
+prod.2way  <- lmer(productivity ~ PlantOrigin*SedOrigin + (1|TankID), data=prod, na.action = na.exclude)
+prod.1way <- lmer(productivity ~ PlantOrigin  + SedOrigin + (1|TankID), data=prod, na.action = na.exclude )
+model.sel(prod.2way, prod.1way) 
+#prod.1way is best fit
+
+prod.full <- lmer(productivity ~ PlantOrigin  + SedOrigin + (1|TankID), data=prod, na.action = na.exclude )
+plot(prod.full)
+qqnorm(resid(prod.full))
+qqline(resid(prod.full))
+shapiro.test(resid(prod.full)) #p=0.1057
+summary(prod.full) 
+Anova(prod.full) #no differences in productivity p >0.1
 
 ###########################
 ##BOXPLOT OF AB##
@@ -195,10 +312,30 @@ prod.plot
 aboveBelow <- meta %>% select (SampleID:TankID, ab, poptreat)
 #setting seed so that code is run from same random path
 set.seed(5)
-ab.plot <- ggplot(aboveBelow, aes(x=PlantOrigin, y=ab, fill=SedOrigin)) +
-  geom_boxplot() + 
-  geom_jitter()
+ab.plot <- ggplot(aboveBelow, aes(x=PlantOrigin, y=ab, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw()
 ab.plot
+
+#ANALYSIS
+ab.2way  <- lmer(ab ~ PlantOrigin*SedOrigin + (1|TankID), data=aboveBelow, na.action = na.exclude)
+ab.1way <- lmer(ab ~ PlantOrigin  + SedOrigin + (1|TankID), data=aboveBelow, na.action = na.exclude )
+model.sel(ab.2way, ab.1way) 
+#ab.1way is best fit
+
+ab.full <- lmer(ab ~ PlantOrigin  + SedOrigin + (1|TankID), data=aboveBelow, na.action = na.exclude )
+plot(ab.full)
+qqnorm(resid(ab.full))
+qqline(resid(ab.full))
+shapiro.test(resid(ab.full)) #p=0.9384
+summary(ab.full) 
+Anova(ab.full)
+
+#looking at contrasts for 2-way interaction
+ab.emm <- emmeans(ab.full, ~ PlantOrigin * SedOrigin)
+contrast(ab.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+
 
 ###########################
 ##BOXPLOT OF Avg SS Size##
@@ -206,11 +343,101 @@ ab.plot
 avgSs <- meta %>% select (SampleID:TankID, avgSsSize, poptreat)
 #setting seed so that code is run from same random path
 set.seed(5)
-avgSs.plot <- ggplot(avgSs, aes(x=PlantOrigin, y=avgSsSize, fill=SedOrigin)) +
-  geom_boxplot() + 
-  geom_jitter()
+
+avgSs.plot <- ggplot(avgSs, aes(x=PlantOrigin, y=avgSsSize, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
 avgSs.plot
 
+#ANALYSIS
+avgSs.2way  <- lmer(avgSsSize ~ PlantOrigin*SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+avgSs.1way <- lmer(avgSsSize ~ PlantOrigin  + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude )
+model.sel(avgSs.2way, avgSs.1way) 
+#avgSs.1way is best fit
+
+avgSs.full <- gls(avgSsSize ~ PlantOrigin  + SedOrigin, data=avgSs, na.action = na.exclude )
+#dropped random effect bc there was a singular boundary fit error
+plot(avgSs.full)
+qqnorm(resid(avgSs.full))
+qqline(resid(avgSs.full))
+shapiro.test(resid(avgSs.full)) #p<0.05
+summary(avgSs.full) 
+Anova(avgSs.full) 
+#both plant and sed origin have effect of p<0.05
+
+#looking at contrasts for 2-way interaction
+avgSs.emm <- emmeans(avgSs.full, ~ PlantOrigin * SedOrigin)
+contrast(avgSs.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+#############
+##SULFIDE BOXPLOT PER TREATMENT
+##############
+sul <- meta %>% select(SampleID:TankID, poptreat, sulfide.um)
+set.seed(5)
+
+#with outliers
+sul.plot <- ggplot(sul, aes(x=PlantOrigin, y=sulfide.um, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+sul.plot
+
+#without outliers
+#removing outliers
+#removing outliers
+sul.out <- sul
+sul.out <- sul.out[sul.out$SampleID != "2-10",]
+sul.out <- sul.out[sul.out$SampleID != "3-1",]
+sul.out <- sul.out[sul.out$SampleID != "3-2",]
+sul.out <- sul.out[sul.out$SampleID != "3-11",]
+sul.out <- sul.out[sul.out$SampleID != "3-12",]
+sulOut.plot <- ggplot(sul.out, aes(x=PlantOrigin, y=sulfide.um, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+sulOut.plot
+
+#ANALYSIS WITHOUT OUTLIERS
+#ANALYSIS
+sulOut.2way  <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul.out, na.action = na.exclude)
+sulOut.1way <- lmer(sulfide.um ~ PlantOrigin  + SedOrigin + (1|TankID), data=sul.out, na.action = na.exclude )
+model.sel(sulOut.2way, sulOut.1way) 
+#sulOut.2way is best fit
+
+sulOut.full <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul.out, na.action = na.exclude)
+#dropped random effect bc there was a singular boundary fit error
+plot(sulOut.full)
+qqnorm(resid(sulOut.full))
+qqline(resid(sulOut.full))
+shapiro.test(resid(sulOut.full)) #p<0.05
+summary(sulOut.full) 
+Anova(sulOut.full) 
+#plant and sed origin have effect and interaction of p<0.05
+
+#looking at contrasts for 2-way interaction
+sulOut.emm <- emmeans(sulOut.full, ~ PlantOrigin * SedOrigin)
+contrast(sulOut.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+#ANALYSIS WITH OUTLIERS
+sul.2way  <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul, na.action = na.exclude)
+sul.1way <- lmer(sulfide.um ~ PlantOrigin  + SedOrigin + (1|TankID), data=sul, na.action = na.exclude )
+model.sel(sul.2way, sul.1way) 
+#sul.2way is best fit
+
+sul.full <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul, na.action = na.exclude)
+#dropped random effect bc there was a singular boundary fit error
+plot(sul.full)
+qqnorm(resid(sul.full))
+qqline(resid(sul.full))
+shapiro.test(resid(sul.full)) #p<0.05
+summary(sul.full) 
+Anova(sul.full) 
+#plant and sed origin have effect and interaction of p<0.05
+
+#looking at contrasts for 2-way interaction
+sulOut.emm <- emmeans(sulOut.full, ~ PlantOrigin * SedOrigin)
+contrast(sulOut.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 
 ##########
 ##PCA ATTEMPTS
