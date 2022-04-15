@@ -52,6 +52,8 @@ meta$sumBel[meta$sumBel == 0] <- NA
 
 meta <- meta %>% mutate(ab = sumAbove/sumBel)
 
+meta <- meta %>% mutate(totalBio = sumAbove + sumBel)
+
 #average root hair length
 meta <- meta %>% mutate(rhLength = (root.hair1.mm + root.hair2.mm + root.hair3.mm)/3)
 
@@ -438,6 +440,180 @@ Anova(sul.full)
 #looking at contrasts for 2-way interaction
 sulOut.emm <- emmeans(sulOut.full, ~ PlantOrigin * SedOrigin)
 contrast(sulOut.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+#####################
+##BOXPLOT OF LONGEST ROOT_MM##
+#####################
+longRt <- meta %>% select(SampleID:TankID, poptreat, LongestRoot_mm)
+set.seed(5)
+
+#with outliers
+longRt.plot <- ggplot(longRt, aes(x=PlantOrigin, y=LongestRoot_mm, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+longRt.plot
+
+#ANALYSIS
+hist(longRt$LongestRoot_mm)
+longRt.2way  <- lmer(LongestRoot_mm ~ PlantOrigin*SedOrigin + (1|TankID), data=longRt, na.action = na.exclude)
+longRt.1way <- lmer(LongestRoot_mm ~ PlantOrigin  + SedOrigin + (1|TankID), data=longRt, na.action = na.exclude )
+model.sel(longRt.2way, longRt.1way) 
+#longRtOut.2way is best fit
+
+longRt.full <- lmer(LongestRoot_mm ~ PlantOrigin*SedOrigin + (1|TankID), data=longRt, na.action = na.exclude)
+#dropped random effect bc there was a singular boundary fit error
+plot(longRt.full)
+qqnorm(resid(longRt.full))
+qqline(resid(longRt.full))
+shapiro.test(resid(longRt.full)) #p=0.3146
+summary(longRt.full) 
+Anova(longRt.full) 
+#only sed origin has sig effect p<<0.05
+
+#looking at contrasts for 2-way interaction
+longRt.emm <- emmeans(longRt.full, ~ PlantOrigin * SedOrigin)
+contrast(longRt.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+###################
+##BOXPLOT OF ROOT BIOMASS##
+###################
+rtBiomass <- meta %>% select(SampleID:TankID, poptreat, root.g)
+set.seed(5)
+
+#with outliers
+rtBiomass.plot <- ggplot(rtBiomass, aes(x=PlantOrigin, y=root.g, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+rtBiomass.plot
+
+#ANALYSIS
+hist(rtBiomass$root.g)
+rtBiomass.2way  <- lmer(root.g ~ PlantOrigin*SedOrigin + (1|TankID), data=rtBiomass, na.action = na.exclude)
+rtBiomass.1way <- lmer(root.g ~ PlantOrigin  + SedOrigin + (1|TankID), data=rtBiomass, na.action = na.exclude )
+model.sel(rtBiomass.2way, rtBiomass.1way) 
+#rootBiomass.1way is best fit
+
+rootBio.full <- lmer(root.g ~ PlantOrigin  + SedOrigin + (1|TankID), data=rtBiomass, na.action = na.exclude )
+#dropped random effect bc there was a singular boundary fit error
+plot(rootBio.full)
+qqnorm(resid(rootBio.full))
+qqline(resid(rootBio.full))
+shapiro.test(resid(rootBio.full)) #p<0.05
+summary(rootBio.full) 
+Anova(rootBio.full) 
+#only plant origin has sig effect
+
+#looking at contrasts for 2-way interaction
+rootBio.emm <- emmeans(rootBio.full, ~ PlantOrigin * SedOrigin)
+contrast(rootBio.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+###################
+##BOXPLOT OF BELOW BIOMASS##
+###################
+belBiomass <- meta %>% select(SampleID:TankID, poptreat, sumBel)
+set.seed(5)
+
+#with outliers
+belBiomass.plot <- ggplot(belBiomass, aes(x=PlantOrigin, y=sumBel, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+belBiomass.plot
+
+#ANALYSIS
+hist(belBiomass$sumBel)
+belBiomass.2way  <- lmer(sumBel ~ PlantOrigin*SedOrigin + (1|TankID), data=belBiomass, na.action = na.exclude)
+belBiomass.1way <- lmer(sumBel ~ PlantOrigin  + SedOrigin + (1|TankID), data=belBiomass, na.action = na.exclude )
+model.sel(belBiomass.2way, belBiomass.1way) 
+#belBiomass.1way is best fit
+
+belBiomass.full <- lmer(sumBel ~ PlantOrigin  + SedOrigin + (1|TankID), data=belBiomass, na.action = na.exclude )
+#dropped random effect bc there was a singular boundary fit error
+plot(belBiomass.full)
+qqnorm(resid(belBiomass.full))
+qqline(resid(belBiomass.full))
+shapiro.test(resid(belBiomass.full)) #p=0.2128
+summary(belBiomass.full) 
+Anova(belBiomass.full) 
+#only plant origin has sig effect p<0.05
+
+#looking at contrasts for 2-way interaction
+belBiomass.emm <- emmeans(belBiomass.full, ~ PlantOrigin * SedOrigin)
+contrast(belBiomass.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+###################
+##BOXPLOT OF RHIZOME BIOMASS##
+###################
+rhizBiomass <- meta %>% select(SampleID:TankID, poptreat, rhiz.g)
+set.seed(5)
+
+#with outliers
+rhizBiomass.plot <- ggplot(rhizBiomass, aes(x=PlantOrigin, y=rhiz.g, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+rhizBiomass.plot
+
+#ANALYSIS
+hist(rhizBiomass$rhiz.g)
+#log rhiz.g
+rhizBiomass$logRhiz <- log(rhizBiomass$rhiz.g)
+hist(rhizBiomass$logRhiz)
+
+rhizBiomass.2way  <- lmer(rhiz.g ~ PlantOrigin*SedOrigin + (1|TankID), data=rhizBiomass, na.action = na.exclude)
+rhizBiomass.1way <- lmer(rhiz.g ~ PlantOrigin  + SedOrigin + (1|TankID), data=rhizBiomass, na.action = na.exclude )
+model.sel(rhizBiomass.2way, rhizBiomass.1way) 
+#rhizBiomass.1way is best fit
+
+rhizBiomass.full <- lmer(rhiz.g ~ PlantOrigin  + SedOrigin + (1|TankID), data=rhizBiomass, na.action = na.exclude )
+#dropped random effect bc there was a singular boundary fit error
+plot(rhizBiomass.full)
+qqnorm(resid(rhizBiomass.full))
+qqline(resid(rhizBiomass.full))
+shapiro.test(resid(rhizBiomass.full)) #p=0.3099
+summary(rhizBiomass.full) 
+Anova(rhizBiomass.full) 
+#only plant origin has sig effect p<0.05
+
+#looking at contrasts for 2-way interaction
+rhizBiomass.emm <- emmeans(rhizBiomass.full, ~ PlantOrigin * SedOrigin)
+contrast(rhizBiomass.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+###################
+##BOXPLOT OF TOTAL BIOMASS##
+###################
+totalBiomass <- meta %>% select(SampleID:TankID, poptreat, totalBio)
+set.seed(5)
+
+#with outliers
+totBiomass.plot <- ggplot(totalBiomass, aes(x=PlantOrigin, y=totalBio, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+totBiomass.plot
+
+#ANALYSIS
+hist(totalBiomass$totalBio)
+
+totBiomass.2way  <- lmer(totalBio ~ PlantOrigin*SedOrigin + (1|TankID), data=totalBiomass, na.action = na.exclude)
+totBiomass.1way <- lmer(totalBio ~ PlantOrigin  + SedOrigin + (1|TankID), data=totalBiomass, na.action = na.exclude )
+model.sel(totBiomass.2way, totBiomass.1way) 
+#totBiomass.1way is best fit
+
+totBiomass.full <- lmer(totalBio ~ PlantOrigin  + SedOrigin + (1|TankID), data=totalBiomass, na.action = na.exclude )
+#dropped random effect bc there was a singular boundary fit error
+plot(totBiomass.full)
+qqnorm(resid(totBiomass.full))
+qqline(resid(totBiomass.full))
+shapiro.test(resid(totBiomass.full)) #p=0.1075
+summary(totBiomass.full) 
+Anova(totBiomass.full) 
+#only plant origin has sig effect p<0.05
+
+#looking at contrasts for 2-way interaction
+totBiomass.emm <- emmeans(totBiomass.full, ~ PlantOrigin * SedOrigin)
+contrast(totBiomass.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 
 ##########
 ##PCA ATTEMPTS
