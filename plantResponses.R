@@ -495,3 +495,177 @@ fviz_pca_biplot(vars.pca,
                 addEllipses = TRUE, label = "var",
                 col.var = "black", repel = TRUE,
                 legend.title = "Groups") 
+
+##########################
+###SUBSETTING DATA INTO PLANT AND SED ORIGINS FOR PCA
+##########################
+mpPlant <- meta %>% filter((PlantOrigin == "MILL"))
+
+blPlant <- meta %>% filter((PlantOrigin == "BLAK"))
+
+mpSed <- meta %>% filter((SedOrigin == "MILL"))
+
+blSed <- meta %>% filter((SedOrigin == "BLAK"))
+###############################
+##PCA OF JUST MP PLANTS##
+##############################
+#subset break.2021 to include just vars of intrest
+reduced.mpPlant <- mpPlant %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
+                                      sumAbove:ab, totalGrowth:productivity)
+#removing dead individuals
+processed.mpPlant <- reduced.mpPlant %>% filter(if_any(ShootLength_mm:productivity))
+
+#groups
+groups.mpPlant <- processed.mpPlant %>% select(PlantOrigin, SedOrigin)
+
+#pull only variables
+vars.mpPlant <- processed.mpPlant %>% select(ShootLength_mm:productivity)
+
+#calculating how many NAs are in df after removing dead individuals
+gg_miss_var(vars.mpPlant)
+#estimate number of dimentions for PCA
+nb.mpPlant= estim_ncpPCA(vars.mpPlant,ncp.max=5) 
+#imputes missing values in dataset
+res.comp.mpPlant<- imputePCA(vars.mpPlant, ncp = nb.mpPlant$ncp)
+res.comp.mpPlant
+#looking at the imputed dataset
+res.comp.mpPlant$completeObs[1:3,]
+#merginging imputed dataset with class
+imp.mpPlant <- cbind.data.frame(res.comp.mpPlant$completeObs,groups.mpPlant)
+str(imp.mpPlant)
+head(imp.mpPlant, 3)
+#compute PCA without class
+vars.pca.mpPlant<- PCA(imp.mpPlant[,-11:-12], graph = FALSE)
+vars.pca.mpPlant
+#coloring PCA indiviudals by class
+fviz_pca_ind(vars.pca.mpPlant,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = imp.mpPlant$SedOrigin, # color by groups
+             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+)
+
+###############################
+##PCA OF JUST BL PLANTS##
+##############################
+#subset break.2021 to include just vars of intrest
+reduced.blPlant <- blPlant %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
+                                      sumAbove:ab, totalGrowth:productivity)
+#removing dead individuals
+processed.blPlant <- reduced.blPlant %>% filter(if_any(ShootLength_mm:productivity))
+
+#groups
+groups.blPlant <- processed.blPlant %>% select(PlantOrigin, SedOrigin)
+
+#pull only variables
+vars.blPlant <- processed.blPlant %>% select(ShootLength_mm:productivity)
+
+#calculating how many NAs are in df after removing dead individuals
+gg_miss_var(vars.blPlant)
+#estimate number of dimentions for PCA
+nb.blPlant= estim_ncpPCA(vars.blPlant,ncp.max=5) 
+#imputes missing values in dataset
+res.comp.blPlant<- imputePCA(vars.blPlant, ncp = nb.blPlant$ncp)
+res.comp.blPlant
+#looking at the imputed dataset
+res.comp.blPlant$completeObs[1:3,]
+#merginging imputed dataset with class
+imp.blPlant <- cbind.data.frame(res.comp.blPlant$completeObs,groups.blPlant)
+str(imp.blPlant)
+head(imp.blPlant, 3)
+#compute PCA without class
+vars.pca.blPlant<- PCA(imp.blPlant[,-11:-12], graph = FALSE)
+vars.pca.blPlant
+#coloring PCA indiviudals by class
+fviz_pca_ind(vars.pca.blPlant,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = imp.blPlant$SedOrigin, # color by groups
+             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+)
+
+###############################
+##PCA OF JUST MP SED##
+##############################
+#subset break.2021 to include just vars of intrest
+reduced.mpSed <- mpSed %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
+                                      sumAbove:ab, totalGrowth:productivity)
+#removing dead individuals
+processed.mpSed <- reduced.mpSed %>% filter(if_any(ShootLength_mm:productivity))
+
+#groups
+groups.mpSed <- processed.mpSed %>% select(PlantOrigin, SedOrigin)
+
+#pull only variables
+vars.mpSed <- processed.mpSed %>% select(ShootLength_mm:productivity)
+
+#calculating how many NAs are in df after removing dead individuals
+gg_miss_var(vars.mpSed)
+#estimate number of dimentions for PCA
+nb.mpSed= estim_ncpPCA(vars.mpSed,ncp.max=5) 
+#imputes missing values in dataset
+res.comp.mpSed<- imputePCA(vars.mpSed, ncp = nb.mpSed$ncp)
+res.comp.mpSed
+#looking at the imputed dataset
+res.comp.mpSed$completeObs[1:3,]
+#merginging imputed dataset with class
+imp.mpSed <- cbind.data.frame(res.comp.mpSed$completeObs,groups.mpSed)
+str(imp.mpSed)
+head(imp.mpSed, 3)
+#compute PCA without class
+vars.pca.mpSed<- PCA(imp.mpSed[,-11:-12], graph = FALSE)
+vars.pca.mpSed
+#coloring PCA indiviudals by class
+fviz_pca_ind(vars.pca.mpSed,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = imp.mpSed$PlantOrigin, # color by groups
+             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+)
+
+###############################
+##PCA OF JUST BL SED##
+##############################
+#subset break.2021 to include just vars of intrest
+reduced.blSed <- blSed %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
+                                      sumAbove:ab, totalGrowth:productivity)
+#removing dead individuals
+processed.blSed  <- reduced.blSed  %>% filter(if_any(ShootLength_mm:productivity))
+
+#groups
+groups.blSed  <- processed.blSed  %>% select(PlantOrigin, SedOrigin)
+
+#pull only variables
+vars.blSed  <- processed.blSed  %>% select(ShootLength_mm:productivity)
+
+#calculating how many NAs are in df after removing dead individuals
+gg_miss_var(vars.blSed )
+#estimate number of dimentions for PCA
+nb.blSed = estim_ncpPCA(vars.blSed ,ncp.max=5) 
+#imputes missing values in dataset
+res.comp.blSed <- imputePCA(vars.blSed , ncp = nb.blSed $ncp)
+res.comp.blSed 
+#looking at the imputed dataset
+res.comp.blSed$completeObs[1:3,]
+#merginging imputed dataset with class
+imp.blSed  <- cbind.data.frame(res.comp.blSed $completeObs,groups.blSed )
+str(imp.blSed )
+head(imp.blSed , 3)
+#compute PCA without class
+vars.pca.blSed<- PCA(imp.blSed [,-11:-12], graph = FALSE)
+vars.pca.blSed 
+#coloring PCA indiviudals by class
+fviz_pca_ind(vars.pca.blSed ,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = imp.blSed $PlantOrigin, # color by groups
+             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+)
+
+
+
+
