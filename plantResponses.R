@@ -371,6 +371,50 @@ Anova(avgSs.full)
 #looking at contrasts for 2-way interaction
 avgSs.emm <- emmeans(avgSs.full, ~ PlantOrigin * SedOrigin)
 contrast(avgSs.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+###########################
+##BOXPLOT OF SS MASS##
+##########################
+ss <- meta %>% select (SampleID:TankID, side.g)
+ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) != 0)
+ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) > 0)
+
+#setting seed so that code is run from same random path
+set.seed(5)
+
+ss.plot <- ggplot(ss, aes(x=PlantOrigin, y=side.g, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+ss.plot
+
+#ANALYSIS
+#not rooted
+ss.2way  <- lmer(side.g ~ PlantOrigin*SedOrigin + (1|TankID), data=ss, na.action = na.exclude)
+#rooted
+ss$sqrtSs <- (ss$side.g)^(1/3) #some of the numbers are negative so we should remove them? or keep analysis with resid that has a higher shapiro wilks value
+ss.2wayrt  <- lmer(sqrtSs ~ PlantOrigin*SedOrigin + (1|TankID), data=ss, na.action = na.exclude)
+
+#not rooted
+plot(ss.2way)
+qqnorm(resid(ss.2way))
+qqline(resid(ss.2way))
+shapiro.test(resid(ss.2way)) #p=.1413
+summary(ss.2way) 
+Anova(ss.2way) 
+#plant and sed has effect
+
+#rooted
+plot(ss.2wayrt)
+qqnorm(resid(ss.2wayrt))
+qqline(resid(ss.2wayrt))
+shapiro.test(resid(ss.2wayrt)) #p<0.05
+summary(ss.2wayrt) 
+Anova(ss.2wayrt)
+#only sed has effect
+
+#looking at contrasts for 2-way interaction
+ss.emm <- emmeans(ss.2way, ~ PlantOrigin * SedOrigin)
+contrast(ss.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 
 #############
 ##SULFIDE BOXPLOT PER TREATMENT
