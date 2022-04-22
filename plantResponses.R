@@ -343,6 +343,8 @@ contrast(ab.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 ##BOXPLOT OF Avg SS Size##
 ##########################
 avgSs <- meta %>% select (SampleID:TankID, avgSsSize, poptreat)
+avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) != 0)
+avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) > 0)
 #setting seed so that code is run from same random path
 set.seed(5)
 
@@ -354,18 +356,13 @@ avgSs.plot
 
 #ANALYSIS
 avgSs.2way  <- lmer(avgSsSize ~ PlantOrigin*SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
-avgSs.1way <- lmer(avgSsSize ~ PlantOrigin  + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude )
-model.sel(avgSs.2way, avgSs.1way) 
-#avgSs.1way is best fit
 
-avgSs.full <- gls(avgSsSize ~ PlantOrigin  + SedOrigin, data=avgSs, na.action = na.exclude )
-#dropped random effect bc there was a singular boundary fit error
-plot(avgSs.full)
-qqnorm(resid(avgSs.full))
-qqline(resid(avgSs.full))
-shapiro.test(resid(avgSs.full)) #p<0.05
-summary(avgSs.full) 
-Anova(avgSs.full) 
+plot(avgSs.2way)
+qqnorm(resid(avgSs.2way))
+qqline(resid(avgSs.2way))
+shapiro.test(resid(avgSs.2way)) #p<0.05
+summary(avgSs.2way) 
+Anova(avgSs.2way) 
 #both plant and sed origin have effect of p<0.05
 
 #looking at contrasts for 2-way interaction
@@ -415,6 +412,88 @@ Anova(ss.2wayrt)
 #looking at contrasts for 2-way interaction
 ss.emm <- emmeans(ss.2way, ~ PlantOrigin * SedOrigin)
 contrast(ss.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+
+###########################
+##BOXPLOT OF SS COUNT##
+##########################
+ssCount <- meta %>% select (SampleID:TankID, NoSS)
+ssCount<- ssCount %>% rowwise() %>% filter(sum(c(NoSS)) != 0)
+
+#setting seed so that code is run from same random path
+set.seed(5)
+
+ssCount.plot <- ggplot(ssCount, aes(x=PlantOrigin, y=NoSS, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+ssCount.plot
+
+#ANALYSIS
+#not rooted
+ssCount.2way  <- glmer(NoSS ~ PlantOrigin*SedOrigin + (1|TankID), data=ssCount, na.action = na.exclude, family= "poisson")
+#not rooted
+plot(ssCount.2way)
+qqnorm(resid(ssCount.2way))
+qqline(resid(ssCount.2way))
+shapiro.test(resid(ssCount.2way)) #p=.0.01012
+summary(ssCount.2way) 
+Anova(ssCount.2way) 
+#no effects
+###########################
+##BOXPLOT OF TERMINAL BIOMASSe##
+##########################
+term <- meta %>% select (SampleID:TankID, term.g, poptreat)
+term<- term %>% rowwise() %>% filter(sum(c(term.g)) != 0)
+term<- term %>% rowwise() %>% filter(sum(c(term.g)) > 0)
+#setting seed so that code is run from same random path
+set.seed(5)
+
+term.plot <- ggplot(term, aes(x=PlantOrigin, y=term.g, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+term.plot
+
+#ANALYSIS
+term.2way  <- lmer(term.g ~ PlantOrigin*SedOrigin + (1|TankID), data=term, na.action = na.exclude)
+
+plot(term.2way)
+qqnorm(resid(term.2way))
+qqline(resid(term.2way))
+shapiro.test(resid(term.2way)) #p=0.05285
+summary(term.2way) 
+Anova(term.2way) 
+# plant origin has effect of p<0.05
+
+#looking at contrasts for 2-way interaction
+avgSs.emm <- emmeans(avgSs.full, ~ PlantOrigin * SedOrigin)
+contrast(avgSs.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
+###########################
+##BOXPLOT OF SS COUNT##
+##########################
+rootBund <- meta %>% select (SampleID:TankID, No_RootBundles)
+rootBund<- rootBund %>% rowwise() %>% filter(sum(c(No_RootBundles)) != 0)
+
+#setting seed so that code is run from same random path
+set.seed(5)
+
+rootBundles.plot <- ggplot(rootBund, aes(x=PlantOrigin, y=No_RootBundles, group=PlantOrigin)) + 
+  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  theme_bw() + theme(panel.grid.major=element_blank(),
+                     panel.grid.minor=element_blank())
+rootBundles.plot
+
+#ANALYSIS
+#not rooted
+rootBund.2way  <- glmer(No_RootBundles ~ PlantOrigin*SedOrigin + (1|TankID), data=rootBund, na.action = na.exclude, family= "poisson")
+#not rooted
+plot(rootBund.2way)
+qqnorm(resid(rootBund.2way))
+qqline(resid(rootBund.2way))
+shapiro.test(resid(rootBund.2way)) #p=.0.1023
+summary(rootBund.2way) 
+Anova(rootBund.2way) 
+#plant origin has effect
 
 #############
 ##SULFIDE BOXPLOT PER TREATMENT
