@@ -29,11 +29,11 @@ str(meta) #most things in class they should be
 meta$TankID <- as.factor(meta$TankID)
 str(meta)
 #convert Dead:LeafGrowth5_mm from int to numeric
-cols <- names(meta)[5:13]
+cols <- names(meta)[5:12]
 meta[cols] <- lapply(meta[cols], as.numeric)
 str(meta)
 #convert DaysGrowing:No_RootBundles to numeric
-cols2 <- names(meta)[16:19]
+cols2 <- names(meta)[15:23]
 meta[cols2] <- lapply(meta[cols2], as.numeric)
 str(meta)
 
@@ -287,26 +287,46 @@ grid.arrange(propRHSulf.regclass, propRHSulfOUT.regclass, ncol=2)
 ##########################
 prod <- meta %>% select (SampleID:TankID, productivity, poptreat)
 
-set.seed(5)
-prod.plot <- ggplot(prod, aes(x=PlantOrigin, y=productivity, group=PlantOrigin)) + 
-  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  theme_bw() + theme(panel.grid.major=element_blank(),
-                     panel.grid.minor=element_blank())
+#summary stats
+sum.prod <- summaryBy(productivity ~ PlantOrigin + SedOrigin, data=prod, FUN=fun)
+
+#plot
+prod.plot <- ggplot(sum.prod, aes(x=SedOrigin, y=productivity.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
+  geom_errorbar(aes(ymin=productivity.m-productivity.se, ymax =productivity.m+productivity.se), width=.1) +
+  theme_classic() +
+  ylab(expression(paste( "Productivity (cm^2/day)"))) +
+  scale_linetype_manual(values=c(1,2)) +
+  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  theme(text=element_text(size=20))+
+  theme(legend.position = )+
+  scale_x_discrete(NULL, labels = c("BL", "MP")) +
+  ylim(0,5)
 prod.plot
 
-#ANALYSIS
-prod.2way  <- lmer(productivity ~ PlantOrigin*SedOrigin + (1|TankID), data=prod, na.action = na.exclude)
-prod.1way <- lmer(productivity ~ PlantOrigin  + SedOrigin + (1|TankID), data=prod, na.action = na.exclude )
-model.sel(prod.2way, prod.1way) 
-#prod.1way is best fit
+#boxplot
+#set.seed(5)
+#prod.plot <- ggplot(prod, aes(x=PlantOrigin, y=productivity, group=PlantOrigin)) + 
+  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  #theme_bw() + theme(panel.grid.major=element_blank(),
+                     #panel.grid.minor=element_blank())
+#prod.plot
 
-prod.full <- lmer(productivity ~ PlantOrigin  + SedOrigin + (1|TankID), data=prod, na.action = na.exclude )
+#ANALYSIS
+hist(prod$productivity)
+prod$logProd <- log(prod$productivity)^2
+prod.2way  <- lm(logProd ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin, data=prod, na.action = na.exclude)
+prod.1way <- lm(logProd ~ PlantOrigin  + SedOrigin, data=prod, na.action = na.exclude )
+#see if 2way can drop
+anova(prod.2way, prod.1way)  #drop
+
+prod.full <- lm(productivity ~ PlantOrigin  + SedOrigin, data=prod, na.action = na.exclude )
 plot(prod.full)
 qqnorm(resid(prod.full))
 qqline(resid(prod.full))
-shapiro.test(resid(prod.full)) #p=0.1057
+shapiro.test(resid(prod.full))# passes
 summary(prod.full) 
-Anova(prod.full) #no differences in productivity p >0.1
+Anova(prod.full, type = 2) #planOrigin
 
 ###########################
 ##BOXPLOT OF AB##
@@ -343,62 +363,94 @@ contrast(ab.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 ##BOXPLOT OF Avg SS Size##
 ##########################
 avgSs <- meta %>% select (SampleID:TankID, avgSsSize, poptreat)
-avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) != 0)
-avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) > 0)
+#avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) != 0)
+#avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) > 0)
 #setting seed so that code is run from same random path
-set.seed(5)
+#set.seed(5)
 
-avgSs.plot <- ggplot(avgSs, aes(x=PlantOrigin, y=avgSsSize, group=PlantOrigin)) + 
-  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  theme_bw() + theme(panel.grid.major=element_blank(),
-                     panel.grid.minor=element_blank())
+#avgSs.plot <- ggplot(avgSs, aes(x=PlantOrigin, y=avgSsSize, group=PlantOrigin)) + 
+ # geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  #theme_bw() + theme(panel.grid.major=element_blank(),
+                    # panel.grid.minor=element_blank())
+#avgSs.plot
+
+#summary stats
+sum.avgSsSize <- summaryBy(avgSsSize ~ PlantOrigin + SedOrigin, data=avgSs, FUN=fun)
+
+#plot
+avgSs.plot <- ggplot(sum.avgSsSize, aes(x=SedOrigin, y=avgSsSize.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
+  geom_errorbar(aes(ymin=avgSsSize.m-avgSsSize.se, ymax =avgSsSize.m+avgSsSize.se), width=.1) +
+  theme_classic() +
+  ylab(expression(paste( "Average Side Shoot Size (g/no.shoots)"))) +
+  scale_linetype_manual(values=c(1,2)) +
+  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  theme(text=element_text(size=20))+
+  theme(legend.position = )+
+  scale_x_discrete(NULL, labels = c("BL", "MP")) 
 avgSs.plot
 
 #ANALYSIS
-avgSs.2way  <- lmer(avgSsSize ~ PlantOrigin*SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+hist(avgSs$avgSsSize)
+avgSs.2way  <- lmer(avgSsSize ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+avgSs.1way <- lmer(avgSsSize ~  PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+#see if 2way can drop
+anova(avgSs.2way, avgSs.1way) #drop
+avgSs.full <- lmer(avgSsSize ~  PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+plot(avgSs.full)
+qqnorm(resid(avgSs.full))
+qqline(resid(avgSs.full))
+shapiro.test(resid(avgSs.full)) #passes
+summary(avgSs.full) 
+Anova(avgSs.full, type = 2) #sed origin
 
-plot(avgSs.2way)
-qqnorm(resid(avgSs.2way))
-qqline(resid(avgSs.2way))
-shapiro.test(resid(avgSs.2way)) #p<0.05
-summary(avgSs.2way) 
-Anova(avgSs.2way) 
-#both plant and sed origin have effect of p<0.05
-
-#looking at contrasts for 2-way interaction
-avgSs.emm <- emmeans(avgSs.full, ~ PlantOrigin * SedOrigin)
-contrast(avgSs.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 ###########################
 ##BOXPLOT OF SS MASS##
 ##########################
 ss <- meta %>% select (SampleID:TankID, side.g)
-ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) != 0)
-ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) > 0)
+#ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) != 0)
+#ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) > 0)
 
 #setting seed so that code is run from same random path
-set.seed(5)
+#set.seed(5)
 
-ss.plot <- ggplot(ss, aes(x=PlantOrigin, y=side.g, group=PlantOrigin)) + 
-  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  theme_bw() + theme(panel.grid.major=element_blank(),
-                     panel.grid.minor=element_blank())
+#ss.plot <- ggplot(ss, aes(x=PlantOrigin, y=side.g, group=PlantOrigin)) + 
+  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+ # theme_bw() + theme(panel.grid.major=element_blank(),
+                    # panel.grid.minor=element_blank())
+#ss.plot
+#summary stats
+sum.ss <- summaryBy(side.g ~ PlantOrigin + SedOrigin, data=ss, FUN=fun)
+
+#plot
+ss.plot <- ggplot(sum.ss, aes(x=SedOrigin, y=side.g.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
+  geom_errorbar(aes(ymin=side.g.m-side.g.se, ymax =side.g.m+side.g.se), width=.1) +
+  theme_classic() +
+  ylab(expression(paste( "Side Shoot Mass (g)"))) +
+  scale_linetype_manual(values=c(1,2)) +
+  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  theme(text=element_text(size=20))+
+  theme(legend.position = )+
+  scale_x_discrete(NULL, labels = c("BL", "MP")) 
 ss.plot
 
 #ANALYSIS
 #not rooted
-ss.2way  <- lmer(side.g ~ PlantOrigin*SedOrigin + (1|TankID), data=ss, na.action = na.exclude)
-#rooted
-ss$sqrtSs <- (ss$side.g)^(1/3) #some of the numbers are negative so we should remove them? or keep analysis with resid that has a higher shapiro wilks value
-ss.2wayrt  <- lmer(sqrtSs ~ PlantOrigin*SedOrigin + (1|TankID), data=ss, na.action = na.exclude)
-
+ss.2way  <- lm(side.g ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=ss, na.action = na.exclude)
+ss.1way <- lm(side.g ~ PlantOrigin + SedOrigin , data=ss, na.action = na.exclude)
+#see if 2way can drop
+anova(ss.2way, ss.1way) #keep 2way
+ss.full <- lm(side.g ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=ss, na.action = na.exclude)
 #not rooted
-plot(ss.2way)
-qqnorm(resid(ss.2way))
-qqline(resid(ss.2way))
-shapiro.test(resid(ss.2way)) #p=.1413
-summary(ss.2way) 
-Anova(ss.2way) 
-#plant and sed has effect
+plot(ss.full)
+qqnorm(resid(ss.full))
+qqline(resid(ss.full))
+shapiro.test(resid(ss.full)) #passes
+summary(ss.full) 
+Anova( lm(side.g ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=ss, na.action = na.exclude,
+           contrasts=list(PlantOrigin=contr.sum, SedOrigin=contr.sum)), type=3) 
+#plant, sed, plant*sed has effect
 
 #rooted
 plot(ss.2wayrt)
@@ -443,31 +495,47 @@ Anova(ssCount.2way)
 ##BOXPLOT OF TERMINAL BIOMASSe##
 ##########################
 term <- meta %>% select (SampleID:TankID, term.g, poptreat)
-term<- term %>% rowwise() %>% filter(sum(c(term.g)) != 0)
-term<- term %>% rowwise() %>% filter(sum(c(term.g)) > 0)
+#term<- term %>% rowwise() %>% filter(sum(c(term.g)) != 0)
+#term<- term %>% rowwise() %>% filter(sum(c(term.g)) > 0)
 #setting seed so that code is run from same random path
-set.seed(5)
+#set.seed(5)
 
-term.plot <- ggplot(term, aes(x=PlantOrigin, y=term.g, group=PlantOrigin)) + 
-  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  theme_bw() + theme(panel.grid.major=element_blank(),
-                     panel.grid.minor=element_blank())
+#term.plot <- ggplot(term, aes(x=PlantOrigin, y=term.g, group=PlantOrigin)) + 
+  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
+  #theme_bw() + theme(panel.grid.major=element_blank(),
+                     #panel.grid.minor=element_blank())
+#term.plot
+
+#summary stats
+sum.term <- summaryBy(term.g ~ PlantOrigin + SedOrigin, data=term, FUN=fun)
+
+#plot
+term.plot <- ggplot(sum.term, aes(x=SedOrigin, y=term.g.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
+  geom_errorbar(aes(ymin=term.g.m-term.g.se, ymax =term.g.m+term.g.se), width=.1) +
+  theme_classic() +
+  ylab(expression(paste( "Terminal Shoot (g)"))) +
+  scale_linetype_manual(values=c(1,2)) +
+  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  theme(text=element_text(size=20))+
+  theme(legend.position = )+
+  scale_x_discrete(NULL, labels = c("BL", "MP"))
 term.plot
 
 #ANALYSIS
-term.2way  <- lmer(term.g ~ PlantOrigin*SedOrigin + (1|TankID), data=term, na.action = na.exclude)
+hist(term$term.g)
+term.2way  <- lm(term.g ~ PlantOrigin*SedOrigin +PlantOrigin +SedOrigin , data=term, na.action = na.exclude)
+term.1way <- lm(term.g ~ PlantOrigin +SedOrigin , data=term, na.action = na.exclude)
+#determine if 2way can drop
+anova(term.2way, term.1way) #drop
+term.full <- lm(term.g ~ PlantOrigin +SedOrigin , data=term, na.action = na.exclude)
+plot(term.full)
+qqnorm(resid(term.full))
+qqline(resid(term.full))
+shapiro.test(resid(term.full)) #passes
+summary(term.full) 
+Anova(term.full, type = 2) #plant origin
 
-plot(term.2way)
-qqnorm(resid(term.2way))
-qqline(resid(term.2way))
-shapiro.test(resid(term.2way)) #p=0.05285
-summary(term.2way) 
-Anova(term.2way) 
-# plant origin has effect of p<0.05
-
-#looking at contrasts for 2-way interaction
-avgSs.emm <- emmeans(avgSs.full, ~ PlantOrigin * SedOrigin)
-contrast(avgSs.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 ###########################
 ##BOXPLOT OF SS COUNT##
 ##########################
@@ -494,6 +562,79 @@ shapiro.test(resid(rootBund.2way)) #p=.0.1023
 summary(rootBund.2way) 
 Anova(rootBund.2way) 
 #plant origin has effect
+#############
+## TOTAL GROWTH RATE
+#############
+growthRate.data <- meta %>% select (SampleID:TankID, growthRate, poptreat)
+
+#summary stats
+sum.growth <- summaryBy(growthRate ~ PlantOrigin + SedOrigin, data=growthRate.data, FUN=fun)
+
+#plot
+growth.plot <- ggplot(sum.growth, aes(x=SedOrigin, y=growthRate.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
+  geom_errorbar(aes(ymin=growthRate.m-growthRate.se, ymax =growthRate.m+growthRate.se), width=.1) +
+  theme_classic() +
+  ylab(expression(paste( "Growth Rate (cm/day)"))) +
+  scale_linetype_manual(values=c(1,2)) +
+  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  theme(text=element_text(size=20))+
+  theme(legend.position = )+
+  scale_x_discrete(NULL, labels = c("BL", "MP")) +
+  ylim(35, 60)
+growth.plot
+
+#analysis
+hist(growthRate.data$growthRate)
+growth.2way <- lm(growthRate ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=growthRate.data, na.action = na.exclude)
+growth.1way <- lm(growthRate ~ PlantOrigin + SedOrigin, data=growthRate.data, na.action = na.exclude)
+#see if 2way can drop
+anova(growth.2way, growth.1way) #drop
+
+growth.full <-  lm(growthRate ~ PlantOrigin + SedOrigin , data=growthRate.data, na.action = na.exclude)
+plot(growth.full)
+qqnorm(resid(growth.full))
+qqline(resid(growth.full))
+shapiro.test(resid(growth.full)) #passes
+summary(growth.full) 
+Anova(growth.full, type=2) #no differences
+
+############
+##TOTAL GROWTH
+#############
+totalGrowth.data <- meta %>% select (SampleID:TankID, totalGrowth, poptreat)
+
+#summary stats
+sum.Totalgrowth <- summaryBy(totalGrowth ~ PlantOrigin + SedOrigin, data=totalGrowth.data, FUN=fun)
+
+#plot
+Totalgrowth.plot <- ggplot(sum.Totalgrowth, aes(x=SedOrigin, y=totalGrowth.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
+  geom_errorbar(aes(ymin=totalGrowth.m-totalGrowth.se, ymax =totalGrowth.m+totalGrowth.se), width=.1) +
+  theme_classic() +
+  ylab(expression(paste( "Total Growth (cm)"))) +
+  scale_linetype_manual(values=c(1,2)) +
+  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  theme(text=element_text(size=20))+
+  theme(legend.position = )+
+  scale_x_discrete(NULL, labels = c("BL", "MP")) 
+Totalgrowth.plot
+
+#analysis
+hist(totalGrowth.data$totalGrowth)
+Totalgrowth.2way <- lm(totalGrowth ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin  , data=totalGrowth.data, na.action = na.exclude)
+Totalgrowth.1way <- lm(totalGrowth ~ PlantOrigin + SedOrigin , data=totalGrowth.data, na.action = na.exclude)
+#see if 2way can drop
+anova(Totalgrowth.2way, Totalgrowth.1way) #drop
+
+Totalgrowth.full <-  lm(totalGrowth ~ PlantOrigin + SedOrigin , data=totalGrowth.data, na.action = na.exclude)
+plot(Totalgrowth.full)
+qqnorm(resid(Totalgrowth.full))
+qqline(resid(Totalgrowth.full))
+shapiro.test(resid(Totalgrowth.full)) #passes
+summary(Totalgrowth.full) 
+Anova(Totalgrowth.full, type=2) #no differences
+
 
 #############
 ##SULFIDE BOXPLOT PER TREATMENT
@@ -737,234 +878,4 @@ Anova(totBiomass.full)
 #looking at contrasts for 2-way interaction
 totBiomass.emm <- emmeans(totBiomass.full, ~ PlantOrigin * SedOrigin)
 contrast(totBiomass.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
-
-##########
-##PCA ATTEMPTS
-##############
-##loading libraries needed for analysis
-library(missMDA)
-library(FactoMineR)
-library(naniar)
-library(VIM)
-library(factoextra)
-library(naniar)
-
-############
-###PREPARING DF FOR MANIPULATION
-###########
-#subset meta to include just vars of intrest
-reduced.meta <- meta %>% select(ShootCount, ShootLength_mm, LongestRoot_mm:No_RootBundles, proportion.root.area.mm, 
-                                propotion.root.hair.area.mm:productivity)
-
-#groups
-groups <- meta %>% select(PlantOrigin, SedOrigin, poptreat, SampleID)
-
-#################
-##PCA ANALYSIS WITH DATA
-#################
-#pull only variables
-vars <- reduced.meta
-#calculating how many NAs are in df after removing dead individuals
-gg_miss_var(vars)
-#estimate number of dimentions for PCA
-nb= estim_ncpPCA(vars,ncp.max=5) 
-#imputes missing values in dataset
-res.comp <- imputePCA(vars, ncp = nb$ncp)
-res.comp
-#looking at the imputed dataset
-res.comp$completeObs[1:3,]
-#merginging imputed dataset with class
-imp <- cbind.data.frame(res.comp$completeObs,groups)
-str(imp)
-head(imp, 3)
-#compute PCA without class
-vars.pca <- PCA(imp[,-20:-23], graph = FALSE)
-vars.pca
-#coloring PCA indiviudals by class
-fviz_pca_ind(vars.pca,
-             geom.ind = "point", # show points only (nbut not "text")
-             col.ind = imp$poptreat, # color by groups
-             palette = c("orangered2","skyblue2", "deeppink","cornflowerblue"),
-             addEllipses = TRUE, # Concentration ellipses
-             legend.title = "Groups"
-)
-#biplot overlayed on top of pca
-fviz_pca_biplot(vars.pca, 
-                col.ind = imp$poptreat, palette = c("orangered2","skyblue2", "deeppink","cornflowerblue"), 
-                addEllipses = TRUE, label = "var",
-                col.var = "black", repel = TRUE,
-                legend.title = "Groups") 
-
-##########################
-###SUBSETTING DATA INTO PLANT AND SED ORIGINS FOR PCA
-##########################
-mpPlant <- meta %>% filter((PlantOrigin == "MILL"))
-
-blPlant <- meta %>% filter((PlantOrigin == "BLAK"))
-
-mpSed <- meta %>% filter((SedOrigin == "MILL"))
-
-blSed <- meta %>% filter((SedOrigin == "BLAK"))
-###############################
-##PCA OF JUST MP PLANTS##
-##############################
-#subset break.2021 to include just vars of intrest
-reduced.mpPlant <- mpPlant %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
-                                      sumAbove:ab, totalGrowth:productivity)
-#removing dead individuals
-processed.mpPlant <- reduced.mpPlant %>% filter(if_any(ShootLength_mm:productivity))
-
-#groups
-groups.mpPlant <- processed.mpPlant %>% select(PlantOrigin, SedOrigin)
-
-#pull only variables
-vars.mpPlant <- processed.mpPlant %>% select(ShootLength_mm:productivity)
-
-#calculating how many NAs are in df after removing dead individuals
-gg_miss_var(vars.mpPlant)
-#estimate number of dimentions for PCA
-nb.mpPlant= estim_ncpPCA(vars.mpPlant,ncp.max=5) 
-#imputes missing values in dataset
-res.comp.mpPlant<- imputePCA(vars.mpPlant, ncp = nb.mpPlant$ncp)
-res.comp.mpPlant
-#looking at the imputed dataset
-res.comp.mpPlant$completeObs[1:3,]
-#merginging imputed dataset with class
-imp.mpPlant <- cbind.data.frame(res.comp.mpPlant$completeObs,groups.mpPlant)
-str(imp.mpPlant)
-head(imp.mpPlant, 3)
-#compute PCA without class
-vars.pca.mpPlant<- PCA(imp.mpPlant[,-11:-12], graph = FALSE)
-vars.pca.mpPlant
-#coloring PCA indiviudals by class
-fviz_pca_ind(vars.pca.mpPlant,
-             geom.ind = "point", # show points only (nbut not "text")
-             col.ind = imp.mpPlant$SedOrigin, # color by groups
-             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
-             addEllipses = TRUE, # Concentration ellipses
-             legend.title = "Groups"
-)
-
-###############################
-##PCA OF JUST BL PLANTS##
-##############################
-#subset break.2021 to include just vars of intrest
-reduced.blPlant <- blPlant %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
-                                      sumAbove:ab, totalGrowth:productivity)
-#removing dead individuals
-processed.blPlant <- reduced.blPlant %>% filter(if_any(ShootLength_mm:productivity))
-
-#groups
-groups.blPlant <- processed.blPlant %>% select(PlantOrigin, SedOrigin)
-
-#pull only variables
-vars.blPlant <- processed.blPlant %>% select(ShootLength_mm:productivity)
-
-#calculating how many NAs are in df after removing dead individuals
-gg_miss_var(vars.blPlant)
-#estimate number of dimentions for PCA
-nb.blPlant= estim_ncpPCA(vars.blPlant,ncp.max=5) 
-#imputes missing values in dataset
-res.comp.blPlant<- imputePCA(vars.blPlant, ncp = nb.blPlant$ncp)
-res.comp.blPlant
-#looking at the imputed dataset
-res.comp.blPlant$completeObs[1:3,]
-#merginging imputed dataset with class
-imp.blPlant <- cbind.data.frame(res.comp.blPlant$completeObs,groups.blPlant)
-str(imp.blPlant)
-head(imp.blPlant, 3)
-#compute PCA without class
-vars.pca.blPlant<- PCA(imp.blPlant[,-11:-12], graph = FALSE)
-vars.pca.blPlant
-#coloring PCA indiviudals by class
-fviz_pca_ind(vars.pca.blPlant,
-             geom.ind = "point", # show points only (nbut not "text")
-             col.ind = imp.blPlant$SedOrigin, # color by groups
-             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
-             addEllipses = TRUE, # Concentration ellipses
-             legend.title = "Groups"
-)
-
-###############################
-##PCA OF JUST MP SED##
-##############################
-#subset break.2021 to include just vars of intrest
-reduced.mpSed <- mpSed %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
-                                      sumAbove:ab, totalGrowth:productivity)
-#removing dead individuals
-processed.mpSed <- reduced.mpSed %>% filter(if_any(ShootLength_mm:productivity))
-
-#groups
-groups.mpSed <- processed.mpSed %>% select(PlantOrigin, SedOrigin)
-
-#pull only variables
-vars.mpSed <- processed.mpSed %>% select(ShootLength_mm:productivity)
-
-#calculating how many NAs are in df after removing dead individuals
-gg_miss_var(vars.mpSed)
-#estimate number of dimentions for PCA
-nb.mpSed= estim_ncpPCA(vars.mpSed,ncp.max=5) 
-#imputes missing values in dataset
-res.comp.mpSed<- imputePCA(vars.mpSed, ncp = nb.mpSed$ncp)
-res.comp.mpSed
-#looking at the imputed dataset
-res.comp.mpSed$completeObs[1:3,]
-#merginging imputed dataset with class
-imp.mpSed <- cbind.data.frame(res.comp.mpSed$completeObs,groups.mpSed)
-str(imp.mpSed)
-head(imp.mpSed, 3)
-#compute PCA without class
-vars.pca.mpSed<- PCA(imp.mpSed[,-11:-12], graph = FALSE)
-vars.pca.mpSed
-#coloring PCA indiviudals by class
-fviz_pca_ind(vars.pca.mpSed,
-             geom.ind = "point", # show points only (nbut not "text")
-             col.ind = imp.mpSed$PlantOrigin, # color by groups
-             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
-             addEllipses = TRUE, # Concentration ellipses
-             legend.title = "Groups"
-)
-
-###############################
-##PCA OF JUST BL SED##
-##############################
-#subset break.2021 to include just vars of intrest
-reduced.blSed <- blSed %>% select(PlantOrigin:SedOrigin, ShootLength_mm, LongestRoot_mm:No_RootBundles,
-                                      sumAbove:ab, totalGrowth:productivity)
-#removing dead individuals
-processed.blSed  <- reduced.blSed  %>% filter(if_any(ShootLength_mm:productivity))
-
-#groups
-groups.blSed  <- processed.blSed  %>% select(PlantOrigin, SedOrigin)
-
-#pull only variables
-vars.blSed  <- processed.blSed  %>% select(ShootLength_mm:productivity)
-
-#calculating how many NAs are in df after removing dead individuals
-gg_miss_var(vars.blSed )
-#estimate number of dimentions for PCA
-nb.blSed = estim_ncpPCA(vars.blSed ,ncp.max=5) 
-#imputes missing values in dataset
-res.comp.blSed <- imputePCA(vars.blSed , ncp = nb.blSed $ncp)
-res.comp.blSed 
-#looking at the imputed dataset
-res.comp.blSed$completeObs[1:3,]
-#merginging imputed dataset with class
-imp.blSed  <- cbind.data.frame(res.comp.blSed $completeObs,groups.blSed )
-str(imp.blSed )
-head(imp.blSed , 3)
-#compute PCA without class
-vars.pca.blSed<- PCA(imp.blSed [,-11:-12], graph = FALSE)
-vars.pca.blSed 
-#coloring PCA indiviudals by class
-fviz_pca_ind(vars.pca.blSed ,
-             geom.ind = "point", # show points only (nbut not "text")
-             col.ind = imp.blSed $PlantOrigin, # color by groups
-             palette = c("skyblue2","orangered2", "cornflowerblue","deeppink", "darkblue","coral2", "deepskyblue4", "brown2"),
-             addEllipses = TRUE, # Concentration ellipses
-             legend.title = "Groups"
-)
-
-
-
 
