@@ -424,13 +424,13 @@ sum.ss <- summaryBy(side.g ~ PlantOrigin + SedOrigin, data=ss, FUN=fun)
 
 #plot
 ss.plot <- ggplot(sum.ss, aes(x=SedOrigin, y=side.g.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=side.g.m-side.g.se, ymax =side.g.m+side.g.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=side.g.m-side.g.se, ymax =side.g.m+side.g.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Side Shoot Mass (g)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
-  theme(text=element_text(size=20))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
+  theme(text=element_text(size=30))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 ss.plot
@@ -528,13 +528,13 @@ sum.term <- summaryBy(term.g ~ PlantOrigin + SedOrigin, data=term, FUN=fun)
 
 #plot
 term.plot <- ggplot(sum.term, aes(x=SedOrigin, y=term.g.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=term.g.m-term.g.se, ymax =term.g.m+term.g.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=term.g.m-term.g.se, ymax =term.g.m+term.g.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Terminal Shoot (g)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
-  theme(text=element_text(size=20))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
+  theme(text=element_text(size=30))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP"))
 term.plot
@@ -573,13 +573,13 @@ sum.rootBund <- summaryBy(No_RootBundles ~ PlantOrigin + SedOrigin, data=rootBun
 
 #plot
 rootBund.plot <- ggplot(sum.rootBund, aes(x=SedOrigin, y=No_RootBundles.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=No_RootBundles.m-No_RootBundles.se, ymax =No_RootBundles.m+No_RootBundles.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=No_RootBundles.m-No_RootBundles.se, ymax =No_RootBundles.m+No_RootBundles.se), width=.1,size=1) +
   theme_classic() +
   ylab(expression(paste( "No. Root Bundles"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
-  theme(text=element_text(size=20))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
+  theme(text=element_text(size=30))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 rootBund.plot
@@ -757,13 +757,13 @@ sum.longestRoot <- summaryBy(LongestRoot_mm ~ PlantOrigin + SedOrigin, data=long
 
 #plot
 longestRoot.plot <- ggplot(sum.longestRoot, aes(x=SedOrigin, y=LongestRoot_mm.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=LongestRoot_mm.m-LongestRoot_mm.se, ymax =LongestRoot_mm.m+LongestRoot_mm.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=LongestRoot_mm.m-LongestRoot_mm.se, ymax =LongestRoot_mm.m+LongestRoot_mm.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Longest Root (mm)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
-  theme(text=element_text(size=20))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
+  theme(text=element_text(size=30))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 longestRoot.plot
@@ -848,13 +848,13 @@ sum.below <- summaryBy(sumBel ~ PlantOrigin + SedOrigin, data=belBiomass, FUN=fu
 
 #plot
 below.plot <- ggplot(sum.below, aes(x=SedOrigin, y=sumBel.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=sumBel.m-sumBel.se, ymax =sumBel.m+sumBel.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=sumBel.m-sumBel.se, ymax =sumBel.m+sumBel.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Total Below Biomass (g)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
-  theme(text=element_text(size=20))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
+  theme(text=element_text(size=30))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 below.plot
@@ -932,15 +932,15 @@ sum.totBio <- summaryBy(totalBio ~ PlantOrigin + SedOrigin, data=totalBiomass, F
 
 #plot
 totBio.plot <- ggplot(sum.totBio, aes(x=SedOrigin, y=totalBio.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=totalBio.m-totalBio.se, ymax =totalBio.m+totalBio.se), width=.1) +
+  geom_point(size=2)+ geom_line(aes(linetype=PlantOrigin),size=1) +
+  geom_errorbar(aes(ymin=totalBio.m-totalBio.se, ymax =totalBio.m+totalBio.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Total Biomass (g)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
-  theme(text=element_text(size=20))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
+  theme(text=element_text(size=30))+
   theme(legend.position = )+
-  scale_x_discrete(NULL, labels = c("BL", "MP")) 
+  scale_x_discrete(NULL, labels = c("BL", "MP"))
 totBio.plot
 
 #ANALYSIS
@@ -1010,13 +1010,13 @@ sum.rhizLength <- summaryBy(Rhiz_Length_mm ~ PlantOrigin + SedOrigin, data=rhizL
 
 #plot
 rhizLength.plot <- ggplot(sum.rhizLength, aes(x=SedOrigin, y=Rhiz_Length_mm.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=Rhiz_Length_mm.m-Rhiz_Length_mm.se, ymax =Rhiz_Length_mm.m+Rhiz_Length_mm.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=Rhiz_Length_mm.m-Rhiz_Length_mm.se, ymax =Rhiz_Length_mm.m+Rhiz_Length_mm.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Rhizome Length (mm)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
-  theme(text=element_text(size=20))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
+  theme(text=element_text(size=30))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 rhizLength.plot
@@ -1033,4 +1033,5 @@ qqline(resid(rhizLength.full))
 shapiro.test(resid(rhizLength.full)) #passes
 summary(rhizLength.full) 
 Anova(rhizLength.full, type=2)  #plant, sed, and interaction sig
-
+Anova(lmer(Rhiz_Length_mm ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=rhizLength, na.action = na.exclude, 
+           contrasts=list(PlantOrigin=contr.sum, SedOrigin=contr.sum)), type=3)
