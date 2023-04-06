@@ -91,194 +91,6 @@ for(i in 1:nrow(meta)){
 #set function to calculate the mean, standard deviation, length, and standard error of variables
 fun <- function(x,...) {c(m=mean(x, na.rm=T), sd=sd(x,na.rm=T), n = length(x), se=sd(x,na.rm=T)/sqrt(length(x)))}
 
-#########################
-##REGRESSING LONGEST ROOT TO CHEMISTRY##
-##########################
-#Selecting f2size and severity
-rlSul <- meta %>% select (SampleID:TankID, LongestRoot_mm, sulfide.um, poptreat)
-hist(rlSul$LongestRoot_mm) #flat nor curve
-hist(rlSul$sulfide.um) #very not normal; has those outliers
-
-#with outliers
-rlSul.regclass <- ggplot(rlSul, aes(x= LongestRoot_mm, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "Sulfide (um) vs Longest Root (mm)"))) +
-  geom_smooth(method=lm) 
-rlSul.regclass 
-
-##WITHOUT OUTLIERS
-#finding outlier
-boxplot.stats(rlSul$sulfide.um)$out
-outSul.tot <- boxplot.stats(rlSul$sulfide.um)$out
-out_indSul.tot <- which(rlSul$sulfide.um %in% c(outSul.tot))
-out_indSul.tot
-#outliers are: 2-10 (BLAK-S), 3-1 (MILL-O), 3-2 (MILL-O), 3-11 (MILL-O), 3-12 (MILL-O)
-
-#removing outliers
-rlSul.out <- rlSul
-rlSul.out <- rlSul.out[rlSul.out$SampleID != "2-10",]
-rlSul.out <- rlSul.out[rlSul.out$SampleID != "3-1",]
-rlSul.out <- rlSul.out[rlSul.out$SampleID != "3-2",]
-rlSul.out <- rlSul.out[rlSul.out$SampleID != "3-11",]
-rlSul.out <- rlSul.out[rlSul.out$SampleID != "3-12",]
-str(rlSul.out)
-droplevels(rlSul.out)
-hist(rlSul.out$sulfide.um)
-
-#without outliers
-rlSulOUT.regclass <- ggplot(rlSul.out, aes(x= LongestRoot_mm, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "Sulfide (um) vs Longest Root (mm)"))) +
-  geom_smooth(method=lm) 
-rlSulOUT.regclass 
-
-##ARRANGING TWO TGP PLOTS FOR A:B
-grid.arrange(rlSul.regclass, rlSulOUT.regclass, ncol=2)
-
-#########################
-##REGRESSING AVG ROOT HAIR LENGTH TO CHEMISTRY##
-##########################
-#Selecting f2size and severity
-rhSul <- meta %>% select (SampleID:TankID, rhLength, sulfide.um, poptreat)
-hist(rhSul$rhLength) #right tailed
-hist(rhSul$sulfide.um) #very not normal; has those outliers
-
-#with outliers
-rhSul.regclass <- ggplot(rhSul, aes(x= rhLength, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "Sulfide (um) vs Average Root Hair Length (mm)"))) +
-  geom_smooth(method=lm) 
-rhSul.regclass 
-
-#############################
-##REG PROPORTION ROOT HAIR AREA TO SULF##
-#############################
-#Selecting f2size and severity
-proprhSul <- meta %>% select (SampleID:TankID, propotion.root.hair.area.mm, sulfide.um, poptreat)
-hist(proprhSul$propotion.root.hair.area.mm) #pretty norm
-hist(proprhSul$sulfide.um) #very not normal; has those outliers
-
-#with outliers
-proprhSul.regclass <- ggplot(proprhSul, aes(x= propotion.root.hair.area.mm, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "Sulfide (um) vs Proportion of Root Hair Area"))) +
-  geom_smooth(method=lm) 
-proprhSul.regclass 
-
-#############################
-##AB VS Sulfide##
-#############################
-#Selecting f2size and severity
-abSul <- meta %>% select (SampleID:TankID, ab, sulfide.um, poptreat)
-hist(abSul$ab) #pretty norm
-hist(abSul$sulfide.um) #very not normal; has those outliers
-
-#with outliers
-abSul.regclass <- ggplot(abSul, aes(x= ab, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "Sulfide (um) vs Above:Below"))) +
-  geom_smooth(method=lm) 
-abSul.regclass 
-
-
-###########################
-##Avg SS Size vs Below##
-##########################
-avgSSBel <- meta %>% select (SampleID:TankID, avgSsSize, rhiz.g, sumBel, poptreat)
-hist(avgSSBel$avgSsSize) #pretty norm right outlier
-hist(avgSSBel$rhiz.g) #broad right tail dist
-
-avgSSBel.regclass <- ggplot(avgSSBel, aes(x= sumBel, y= avgSsSize, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[1], "Avg Ss Size (g) vs Below (g)"))) +
-  geom_smooth(method=lm) 
-avgSSBel.regclass
-
-###########################
-##productivity vs Avg SS Size##
-##########################
-prodAvgSS <- meta %>% select (SampleID:TankID, avgSsSize, productivity, poptreat)
-hist(prodAvgSS$avgSsSize) #pretty norm right outlier
-hist(prodAvgSS$productivity) #norm
-
-prodAvgSS.regclass <- ggplot(prodAvgSS, aes(x= productivity, y= avgSsSize, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[1], "Avg SS Size (g) vs", F[0], "Productivity (cm^2)/day"))) +
-  geom_smooth(method=lm) 
-prodAvgSS.regclass
-
-###########################
-##longest root vs avg root hair length##
-##########################
-rootRh <- meta %>% select (SampleID:TankID, LongestRoot_mm, rhLength, poptreat)
-hist(rootRh$LongestRoot_mm) #pretty norm 
-hist(rootRh$rhLength) #right tailed
-
-rootRh.regclass <- ggplot(rootRh, aes(x= LongestRoot_mm, y= rhLength, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "Longest root (mm) vs Average root hair lenght(cm)"))) +
-  geom_smooth(method=lm) 
-rootRh.regclass
-
-###########################
-##root vs proportion root hair area##
-##########################
-rhizR <- meta %>% select (SampleID:TankID, propotion.root.hair.area.mm, root.g, poptreat)
-hist(rhizR$propotion.root.hair.area.mm) #pretty norm 
-hist(rhizR$root.g) #right tailed
-
-rhizR.regclass <- ggplot(rhizR, aes(x= root.g, y= propotion.root.hair.area.mm, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "root (g) vs propotion of root hair area"))) +
-  geom_smooth(method=lm) 
-rhizR.regclass
-
-###########################
-##root.g vs sulfide##
-##########################
-belSulf <- meta %>% select (SampleID:TankID, sumBel, sulfide.um, root.g, poptreat)
-hist(belSulf$root.g) # right tailed
-hist(belSulf$sulfide.um) #right tailed
-
-rhizR.regclass <- ggplot(belSulf, aes(x= root.g, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "below (g) vs sulfide (um)"))) +
-  geom_smooth(method=lm) 
-rhizR.regclass
-
-###########################
-##prop root hair vs sulfide##
-##########################
-propRHSulf <- meta %>% select (SampleID:TankID, propotion.root.hair.area.mm, sulfide.um, poptreat)
-hist(propRHSulf$propotion.root.hair.area.mm) #norm
-hist(propRHSulf$sulfide.um) #right tailed
-
-propRHSulf.regclass <- ggplot(propRHSulf, aes(x= propotion.root.hair.area.mm, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "proportion of root hairs vs sulfide (um)"))) +
-  geom_smooth(method=lm) 
-propRHSulf.regclass
-
-#removing outliers
-propRHSulf.out <- propRHSulf
-propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "2-10",]
-propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-1",]
-propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-2",]
-propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-11",]
-propRHSulf.out  <- propRHSulf.out [propRHSulf.out $SampleID != "3-12",]
-str(propRHSulf.out )
-droplevels(propRHSulf.out )
-hist(propRHSulf.out $sulfide.um)
-
-#without outliers
-propRHSulfOUT.regclass <- ggplot(propRHSulf.out, aes(x= propotion.root.hair.area.mm, y= sulfide.um, color= poptreat)) + geom_point(size=3) +
-  scale_color_manual(values=c("orangered2","skyblue2", "deeppink","cornflowerblue")) +
-  ylab(expression(paste(F[0], "proportion of root hairs vs sulfide (um)"))) +
-  geom_smooth(method=lm) 
-propRHSulfOUT.regclass 
-
-##ARRANGING TWO TGP PLOTS FOR A:B
-grid.arrange(propRHSulf.regclass, propRHSulfOUT.regclass, ncol=2)
 
 ###########################
 ##BOXPLOT OF PRODUCTIVITY##
@@ -361,46 +173,36 @@ contrast(ab.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 ##BOXPLOT OF Avg SS Size##
 ##########################
 avgSs <- meta %>% select (SampleID:TankID, avgSsSize, poptreat)
-#avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) != 0)
-#avgSs<- avgSs %>% rowwise() %>% filter(sum(c(avgSsSize)) > 0)
-#setting seed so that code is run from same random path
-#set.seed(5)
 
-#avgSs.plot <- ggplot(avgSs, aes(x=PlantOrigin, y=avgSsSize, group=PlantOrigin)) + 
- # geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  #theme_bw() + theme(panel.grid.major=element_blank(),
-                    # panel.grid.minor=element_blank())
-#avgSs.plot
 
 #summary stats
 sum.avgSsSize <- summaryBy(avgSsSize ~ PlantOrigin + SedOrigin, data=avgSs, FUN=fun)
 
 #plot
 avgSs.plot <- ggplot(sum.avgSsSize, aes(x=SedOrigin, y=avgSsSize.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=avgSsSize.m-avgSsSize.se, ymax =avgSsSize.m+avgSsSize.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=avgSsSize.m-avgSsSize.se, ymax =avgSsSize.m+avgSsSize.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Average Side Shoot Size (g/no.shoots)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
   theme(text=element_text(size=20))+
-  theme(legend.position = )+
-  scale_x_discrete(NULL, labels = c("BL", "MP")) 
+  theme(legend.position = "none")+
+  scale_x_discrete(NULL, labels = c("BL", "MP")) + ylab("Average sideshoot size (g)")
 avgSs.plot
 
 #ANALYSIS
-hist(avgSs$avgSsSize) #bionomial looking
+hist(avgSs$avgSsSize) #right tail looking; one outlier
 avgSs$sqrtSs <- sqrt(avgSs$avgSsSize)
-hist(avgSs$sqrtSs) #more normal
+hist(avgSs$sqrtSs) #more normal with an outlier
 avgSs.2way  <- lmer(sqrtSs ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
 avgSs.1way <- lmer(sqrtSs ~  PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
 #see if 2way can drop
-anova(avgSs.2way, avgSs.1way) #drop
-avgSs.full <-lmer(sqrtSs ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+anova(avgSs.2way, avgSs.1way) #drop 
+avgSs.full <-lmer( sqrtSs ~ PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
 plot(avgSs.2way)
 qqnorm(resid(avgSs.2way))
-qqline(resid(avgSs.2way))
-shapiro.test(resid(avgSs.2way)) #passes
+qqline(resid(avgSs.2way)) #has 2 outliers
 summary(avgSs.2way) 
 Anova(avgSs.2way, type = 2) #sed origin
 
@@ -408,17 +210,6 @@ Anova(avgSs.2way, type = 2) #sed origin
 ##BOXPLOT OF SS MASS##
 ##########################
 ss <- meta %>% select (SampleID:TankID, side.g)
-#ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) != 0)
-#ss<- ss %>% rowwise() %>% filter(sum(c(side.g)) > 0)
-
-#setting seed so that code is run from same random path
-#set.seed(5)
-
-#ss.plot <- ggplot(ss, aes(x=PlantOrigin, y=side.g, group=PlantOrigin)) + 
-  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
- # theme_bw() + theme(panel.grid.major=element_blank(),
-                    # panel.grid.minor=element_blank())
-#ss.plot
 #summary stats
 sum.ss <- summaryBy(side.g ~ PlantOrigin + SedOrigin, data=ss, FUN=fun)
 
@@ -437,58 +228,34 @@ ss.plot
 
 #ANALYSIS
 #not rooted
-ss.2way  <- lm(side.g ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=ss, na.action = na.exclude)
-ss.1way <- lm(side.g ~ PlantOrigin + SedOrigin , data=ss, na.action = na.exclude)
+ss.2way  <- lmer(side.g ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=ss, na.action = na.exclude)
+ss.1way <- lmer(side.g ~ PlantOrigin + SedOrigin + (1|TankID), data=ss, na.action = na.exclude)
 #see if 2way can drop
-anova(ss.2way, ss.1way) #keep 2way
-ss.full <- lm(side.g ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=ss, na.action = na.exclude)
+anova(ss.2way, ss.1way) #drop 
+ss.full <- lmer(side.g ~ PlantOrigin + SedOrigin + (1|TankID), data=ss, na.action = na.exclude)
 #not rooted
 plot(ss.full)
 qqnorm(resid(ss.full))
-qqline(resid(ss.full))
-shapiro.test(resid(ss.full)) #passes
+qqline(resid(ss.full)) #normal
 summary(ss.full) 
-Anova( lm(side.g ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=ss, na.action = na.exclude,
-           contrasts=list(PlantOrigin=contr.sum, SedOrigin=contr.sum)), type=3) 
-#plant, sed, plant*sed has effect
+Anova( ss.full) 
 
-#rooted
-plot(ss.2wayrt)
-qqnorm(resid(ss.2wayrt))
-qqline(resid(ss.2wayrt))
-shapiro.test(resid(ss.2wayrt)) #p<0.05
-summary(ss.2wayrt) 
-Anova(ss.2wayrt)
-#only sed has effect
-
-#looking at contrasts for 2-way interaction
-ss.emm <- emmeans(ss.2way, ~ PlantOrigin * SedOrigin)
-contrast(ss.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
 
 ###########################
 ##BOXPLOT OF SS COUNT##
 ##########################
 ssCount <- meta %>% select (SampleID:TankID, NoSS)
-#ssCount<- ssCount %>% rowwise() %>% filter(sum(c(NoSS)) != 0)
-
-#setting seed so that code is run from same random path
-#set.seed(5)
-#ssCount.plot <- ggplot(ssCount, aes(x=PlantOrigin, y=NoSS, group=PlantOrigin)) + 
-  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  #theme_bw() + theme(panel.grid.major=element_blank(),
-                     #panel.grid.minor=element_blank())
-#ssCount.plot
 #summary stats
 sum.ssCount <- summaryBy(NoSS ~ PlantOrigin + SedOrigin, data=ssCount, FUN=fun)
 
 #plot
 ssCount.plot <- ggplot(sum.ssCount, aes(x=SedOrigin, y=NoSS.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=NoSS.m-NoSS.se, ymax =NoSS.m+NoSS.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=NoSS.m-NoSS.se, ymax =NoSS.m+NoSS.se), width=.1, size =1) +
   theme_classic() +
   ylab(expression(paste( "Number of Side Shoots"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
   theme(text=element_text(size=20))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
@@ -501,28 +268,13 @@ ssCount.1way <- glm(NoSS ~ PlantOrigin + SedOrigin, data=ssCount, na.action = na
 #see if can drop 2way
 anova(ssCount.2way, ssCount.1way, test = "Chisq") #drop
 ssCount.full <- glm(NoSS ~ PlantOrigin + SedOrigin, data=ssCount, na.action = na.exclude, family= "poisson")
-#not rooted
-plot(ssCount.full)
-qqnorm(resid(ssCount.full))
-qqline(resid(ssCount.full))
-summary(ssCount.full) 
+summary(ssCount.full)
 Anova(ssCount.full, type=2) 
 #no effects
 ###########################
 ##BOXPLOT OF TERMINAL BIOMASSe##
 ##########################
 term <- meta %>% select (SampleID:TankID, term.g, poptreat)
-#term<- term %>% rowwise() %>% filter(sum(c(term.g)) != 0)
-#term<- term %>% rowwise() %>% filter(sum(c(term.g)) > 0)
-#setting seed so that code is run from same random path
-#set.seed(5)
-
-#term.plot <- ggplot(term, aes(x=PlantOrigin, y=term.g, group=PlantOrigin)) + 
-  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  #theme_bw() + theme(panel.grid.major=element_blank(),
-                     #panel.grid.minor=element_blank())
-#term.plot
-
 #summary stats
 sum.term <- summaryBy(term.g ~ PlantOrigin + SedOrigin, data=term, FUN=fun)
 
@@ -557,17 +309,6 @@ Anova(term.full, type = 2) #plant origin
 ##BOXPLOT OF ROOT BUNDLES COUNT##
 ##########################
 rootBund <- meta %>% select (SampleID:TankID, No_RootBundles)
-#rootBund<- rootBund %>% rowwise() %>% filter(sum(c(No_RootBundles)) != 0)
-
-#setting seed so that code is run from same random path
-#set.seed(5)
-
-#rootBundles.plot <- ggplot(rootBund, aes(x=PlantOrigin, y=No_RootBundles, group=PlantOrigin)) + 
-  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  #theme_bw() + theme(panel.grid.major=element_blank(),
-                     #panel.grid.minor=element_blank())
-#rootBundles.plot
-
 #summary stats
 sum.rootBund <- summaryBy(No_RootBundles ~ PlantOrigin + SedOrigin, data=rootBund, FUN=fun)
 
@@ -591,9 +332,6 @@ rootBund.1way <- glmer(No_RootBundles ~ PlantOrigin + SedOrigin+ (1|TankID), dat
 #see if 2way can drop
 anova(rootBund.2way, rootBund.1way) #drop
 rootBund.full <- glmer(No_RootBundles ~ PlantOrigin + SedOrigin+ (1|TankID), data=rootBund, na.action = na.exclude, family= "poisson")
-plot(rootBund.full)
-qqnorm(resid(rootBund.full))
-qqline(resid(rootBund.full))
 summary(rootBund.full) 
 Anova(rootBund.full) #plant
 #############
@@ -606,12 +344,12 @@ sum.growth <- summaryBy(growthRate ~ PlantOrigin + SedOrigin, data=growthRate.da
 
 #plot
 growth.plot <- ggplot(sum.growth, aes(x=SedOrigin, y=growthRate.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=growthRate.m-growthRate.se, ymax =growthRate.m+growthRate.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin), size=1) +
+  geom_errorbar(aes(ymin=growthRate.m-growthRate.se, ymax =growthRate.m+growthRate.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Growth Rate (cm/day)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
   theme(text=element_text(size=20))+
   theme(legend.position = )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) +
@@ -620,18 +358,18 @@ growth.plot
 
 #analysis
 hist(growthRate.data$growthRate)
-growth.2way <- lm(growthRate ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin , data=growthRate.data, na.action = na.exclude)
-growth.1way <- lm(growthRate ~ PlantOrigin + SedOrigin, data=growthRate.data, na.action = na.exclude)
+growth.2way <- lmer(growthRate ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID) , data=growthRate.data, na.action = na.exclude)
+growth.1way <- lmer(growthRate ~ PlantOrigin + SedOrigin+ (1|TankID), data=growthRate.data, na.action = na.exclude)
 #see if 2way can drop
 anova(growth.2way, growth.1way) #drop
 
-growth.full <-  lm(growthRate ~ PlantOrigin + SedOrigin , data=growthRate.data, na.action = na.exclude)
+growth.full <- lmer(growthRate ~ PlantOrigin + SedOrigin+ (1|TankID), data=growthRate.data, na.action = na.exclude)
 plot(growth.full)
 qqnorm(resid(growth.full))
 qqline(resid(growth.full))
 shapiro.test(resid(growth.full)) #passes
 summary(growth.full) 
-Anova(growth.full, type=2) #no differences
+Anova(growth.full) #no differences
 
 ############
 ##TOTAL GROWTH
@@ -670,88 +408,10 @@ summary(Totalgrowth.full)
 Anova(Totalgrowth.full, type=2) #no differences
 
 
-#############
-##SULFIDE BOXPLOT PER TREATMENT
-##############
-sul <- meta %>% select(SampleID:TankID, poptreat, sulfide.um)
-set.seed(5)
-
-#with outliers
-sul.plot <- ggplot(sul, aes(x=PlantOrigin, y=sulfide.um, group=PlantOrigin)) + 
-  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  theme_bw() + theme(panel.grid.major=element_blank(),
-                     panel.grid.minor=element_blank())
-sul.plot
-
-#without outliers
-#removing outliers
-#removing outliers
-sul.out <- sul
-sul.out <- sul.out[sul.out$SampleID != "2-10",]
-sul.out <- sul.out[sul.out$SampleID != "3-1",]
-sul.out <- sul.out[sul.out$SampleID != "3-2",]
-sul.out <- sul.out[sul.out$SampleID != "3-11",]
-sul.out <- sul.out[sul.out$SampleID != "3-12",]
-sulOut.plot <- ggplot(sul.out, aes(x=PlantOrigin, y=sulfide.um, group=PlantOrigin)) + 
-  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  theme_bw() + theme(panel.grid.major=element_blank(),
-                     panel.grid.minor=element_blank())
-sulOut.plot
-
-#ANALYSIS WITHOUT OUTLIERS
-#ANALYSIS
-sulOut.2way  <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul.out, na.action = na.exclude)
-sulOut.1way <- lmer(sulfide.um ~ PlantOrigin  + SedOrigin + (1|TankID), data=sul.out, na.action = na.exclude )
-model.sel(sulOut.2way, sulOut.1way) 
-#sulOut.2way is best fit
-
-sulOut.full <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul.out, na.action = na.exclude)
-#dropped random effect bc there was a singular boundary fit error
-plot(sulOut.full)
-qqnorm(resid(sulOut.full))
-qqline(resid(sulOut.full))
-shapiro.test(resid(sulOut.full)) #p<0.05
-summary(sulOut.full) 
-Anova(sulOut.full) 
-#plant and sed origin have effect and interaction of p<0.05
-
-#looking at contrasts for 2-way interaction
-sulOut.emm <- emmeans(sulOut.full, ~ PlantOrigin * SedOrigin)
-contrast(sulOut.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
-
-#ANALYSIS WITH OUTLIERS
-sul.2way  <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul, na.action = na.exclude)
-sul.1way <- lmer(sulfide.um ~ PlantOrigin  + SedOrigin + (1|TankID), data=sul, na.action = na.exclude )
-model.sel(sul.2way, sul.1way) 
-#sul.2way is best fit
-
-sul.full <- lmer(sulfide.um ~ PlantOrigin*SedOrigin + (1|TankID), data=sul, na.action = na.exclude)
-#dropped random effect bc there was a singular boundary fit error
-plot(sul.full)
-qqnorm(resid(sul.full))
-qqline(resid(sul.full))
-shapiro.test(resid(sul.full)) #p<0.05
-summary(sul.full) 
-Anova(sul.full) 
-#plant and sed origin have effect and interaction of p<0.05
-
-#looking at contrasts for 2-way interaction
-sulOut.emm <- emmeans(sulOut.full, ~ PlantOrigin * SedOrigin)
-contrast(sulOut.emm, "consec", simple = "each", combine = FALSE, adjust = "mvt")
-
 #####################
 ##BOXPLOT OF LONGEST ROOT_MM##
 #####################
 longRt <- meta %>% select(SampleID:TankID, poptreat, LongestRoot_mm)
-#set.seed(5)
-
-#with outliers
-#longRt.plot <- ggplot(longRt, aes(x=PlantOrigin, y=LongestRoot_mm, group=PlantOrigin)) + 
- # geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
- # theme_bw() + theme(panel.grid.major=element_blank(),
-    #                 panel.grid.minor=element_blank())
-#longRt.plot
-
 #summary stats
 sum.longestRoot <- summaryBy(LongestRoot_mm ~ PlantOrigin + SedOrigin, data=longRt, FUN=fun)
 
@@ -781,20 +441,11 @@ qqline(resid(longRt.full))
 shapiro.test(resid(longRt.full)) #passes
 summary(longRt.full) 
 Anova(longRt.full) 
-#sed
 
 ###################
 ##BOXPLOT OF ROOT BIOMASS##
 ###################
 rtBiomass <- meta %>% select(SampleID:TankID, poptreat, root.g)
-#set.seed(5)
-
-#with outliers
-#rtBiomass.plot <- ggplot(rtBiomass, aes(x=PlantOrigin, y=root.g, group=PlantOrigin)) + 
- # geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
- # theme_bw() + theme(panel.grid.major=element_blank(),
-                  #   panel.grid.minor=element_blank())
-#rtBiomass.plot
 #summary stats
 sum.roots <- summaryBy(root.g ~ PlantOrigin + SedOrigin, data=rtBiomass, FUN=fun)
 
@@ -834,15 +485,6 @@ Anova(rootBio.full, type = 2) #plant
 ##BOXPLOT OF BELOW BIOMASS##
 ###################
 belBiomass <- meta %>% select(SampleID:TankID, poptreat, sumBel)
-#set.seed(5)
-
-#with outliers
-#belBiomass.plot <- ggplot(belBiomass, aes(x=PlantOrigin, y=sumBel, group=PlantOrigin)) + 
- # geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-  #theme_bw() + theme(panel.grid.major=element_blank(),
-                   #  panel.grid.minor=element_blank())
-#belBiomass.plot
-
 #summary stats
 sum.below <- summaryBy(sumBel ~ PlantOrigin + SedOrigin, data=belBiomass, FUN=fun)
 
@@ -878,14 +520,6 @@ Anova(belBiomass.full, type=2) #plant
 ##BOXPLOT OF RHIZOME BIOMASS##
 ###################
 rhizBiomass <- meta %>% select(SampleID:TankID, poptreat, rhiz.g)
-#set.seed(5)
-
-#with outliers
-#rhizBiomass.plot <- ggplot(rhizBiomass, aes(x=PlantOrigin, y=rhiz.g, group=PlantOrigin)) + 
-#  geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
-#  theme_bw() + theme(panel.grid.major=element_blank(),
- #                    panel.grid.minor=element_blank())
-#rhizBiomass.plot
 #summary stats
 sum.rhiz <- summaryBy(rhiz.g ~ PlantOrigin + SedOrigin, data=rhizBiomass, FUN=fun)
 
@@ -920,13 +554,6 @@ Anova(rhizBiomass.full, type=2) #plant
 ##BOXPLOT OF TOTAL BIOMASS##
 ###################
 totalBiomass <- meta %>% select(SampleID:TankID, poptreat, totalBio)
-#set.seed(5)
-#with outliers
-#totBiomass.plot <- ggplot(totalBiomass, aes(x=PlantOrigin, y=totalBio, group=PlantOrigin)) + 
-  #geom_boxplot(color="gray") + facet_grid(. ~ SedOrigin) + geom_jitter(aes(color=PlantOrigin)) +
- # theme_bw() + theme(panel.grid.major=element_blank(),
-                    # panel.grid.minor=element_blank())
-#totBiomass.plot
 #summary stats
 sum.totBio <- summaryBy(totalBio ~ PlantOrigin + SedOrigin, data=totalBiomass, FUN=fun)
 
@@ -945,21 +572,18 @@ totBio.plot
 
 #ANALYSIS
 hist(totalBiomass$totalBio)
-totalBiomass$sqTotalBio <- (totalBiomass$totalBio)^2
-
-totBiomass.2way  <- lm(sqTotalBio ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin, data=totalBiomass, na.action = na.exclude)
-totBiomass.1way <- lm(sqTotalBio ~ PlantOrigin  + SedOrigin , data=totalBiomass, na.action = na.exclude )
+totalBiomass$sqrtTotBio <- sqrt(totalBiomass$totalBio)
+totBiomass.2way  <- lmer(sqTotalBio ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID), data=totalBiomass, na.action = na.exclude)
+totBiomass.1way <- lmer(sqTotalBio ~ PlantOrigin  + SedOrigin + (1|TankID), data=totalBiomass, na.action = na.exclude )
 #see if 2way can drop
 anova(totBiomass.2way, totBiomass.1way) #drop
-
-totBiomass.full <- lm(sqTotalBio ~ PlantOrigin  + SedOrigin , data=totalBiomass, na.action = na.exclude )
+totBiomass.full <-  lmer(sqrtTotBio ~ PlantOrigin  + SedOrigin + (1|TankID), data=totalBiomass, na.action = na.exclude )
 plot(totBiomass.full)
 qqnorm(resid(totBiomass.full))
 qqline(resid(totBiomass.full))
 shapiro.test(resid(totBiomass.full))
 summary(totBiomass.full) 
-Anova(totBiomass.full, type = 2) 
-#sed has effect
+Anova(totBiomass.full) #3 outliers; plant origin
 
 ###############
 ##TOTAL ABOVE
@@ -971,34 +595,32 @@ sum.above <- summaryBy(sumAbove ~ PlantOrigin + SedOrigin, data=totalAbove, FUN=
 
 #plot
 above.plot <- ggplot(sum.above, aes(x=SedOrigin, y=sumAbove.m, group=PlantOrigin, color=PlantOrigin)) +
-  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin)) +
-  geom_errorbar(aes(ymin=sumAbove.m-sumAbove.se, ymax =sumAbove.m+sumAbove.se), width=.1) +
+  geom_point(size=1)+ geom_line(aes(linetype=PlantOrigin),size=1) +
+  geom_errorbar(aes(ymin=sumAbove.m-sumAbove.se, ymax =sumAbove.m+sumAbove.se), width=.1, size=1) +
   theme_classic() +
   ylab(expression(paste( "Total Above Biomass (g)"))) +
   scale_linetype_manual(values=c(1,2)) +
-  scale_color_manual(values=c("darkolivegreen", "brown2"))+
+  scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
   theme(text=element_text(size=20))+
-  theme(legend.position = )+
+  theme(legend.position = "none")+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 above.plot
 
 #analysis
 hist(totalAbove$sumAbove)
-totalAbove$sqAbove <- (totalAbove$sumAbove)^2
-hist(totalAbove$sqAbove)
-above.2way  <- lm(sqAbove ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin, data=totalAbove, na.action = na.exclude)
-above.1way <- lm(sqAbove ~  PlantOrigin + SedOrigin, data=totalAbove, na.action = na.exclude)
+totalAbove$sqrtAbove <- sqrt(totalAbove$sumAbove)
+hist(totalAbove$sqrtAbove)
+above.2way  <- lmer(sqrtAbove ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=totalAbove, na.action = na.exclude)
+above.1way <- lmer(sqrtAbove ~  PlantOrigin + SedOrigin + (1|TankID), data=totalAbove, na.action = na.exclude)
 #see if can drop 2way
 anova(above.2way, above.1way) #drop
-above.full <-  lm(sqAbove ~  PlantOrigin + SedOrigin, data=totalAbove, na.action = na.exclude)
+above.full <- lmer(sqrtAbove ~  PlantOrigin + SedOrigin + (1|TankID), data=totalAbove, na.action = na.exclude)
 #not rooted
 plot(above.full)
 qqnorm(resid(above.full))
 qqline(resid(above.full))
-shapiro.test(resid(above.full)) #passes
 summary(above.full) 
-Anova(above.full, type=2)  #sed
-
+Anova(above.full, type=2) #three outlier residuals; sed and plant sig
 
 ################
 ##RHIZOME LENGTH
