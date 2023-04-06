@@ -431,7 +431,7 @@ ss.plot <- ggplot(sum.ss, aes(x=SedOrigin, y=side.g.m, group=PlantOrigin, color=
   scale_linetype_manual(values=c(1,2)) +
   scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
   theme(text=element_text(size=30))+
-  theme(legend.position = )+
+  theme(legend.position = "none" , plot.margin = margin(1,1,1.5,1.2, "cm"))+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 ss.plot
 
@@ -534,22 +534,22 @@ term.plot <- ggplot(sum.term, aes(x=SedOrigin, y=term.g.m, group=PlantOrigin, co
   ylab(expression(paste( "Terminal Shoot (g)"))) +
   scale_linetype_manual(values=c(1,2)) +
   scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
-  theme(text=element_text(size=30))+
-  theme(legend.position = )+
+  theme(text=element_text(size=20))+
+  theme(legend.position = "none", plot.margin = margin(1,1,1.5,1.2, "cm"))+
   scale_x_discrete(NULL, labels = c("BL", "MP"))
 term.plot
 
 #ANALYSIS
+str(term)
 hist(term$term.g)
-term.2way  <- lm(term.g ~ PlantOrigin*SedOrigin +PlantOrigin +SedOrigin , data=term, na.action = na.exclude)
-term.1way <- lm(term.g ~ PlantOrigin +SedOrigin , data=term, na.action = na.exclude)
+term.2way  <- lmer(term.g ~ PlantOrigin*SedOrigin +PlantOrigin +SedOrigin + (1|TankID), data=term, na.action = na.exclude)
+term.1way <- lmer(term.g ~ PlantOrigin +SedOrigin+ (1|TankID) , data=term, na.action = na.exclude)
 #determine if 2way can drop
 anova(term.2way, term.1way) #drop
-term.full <- lm(term.g ~ PlantOrigin +SedOrigin , data=term, na.action = na.exclude)
+term.full <- lmer(term.g ~ PlantOrigin +SedOrigin + (1|TankID), data=term, na.action = na.exclude)
 plot(term.full)
 qqnorm(resid(term.full))
 qqline(resid(term.full))
-shapiro.test(resid(term.full)) #passes
 summary(term.full) 
 Anova(term.full, type = 2) #plant origin
 
@@ -579,8 +579,8 @@ rootBund.plot <- ggplot(sum.rootBund, aes(x=SedOrigin, y=No_RootBundles.m, group
   ylab(expression(paste( "No. Root Bundles"))) +
   scale_linetype_manual(values=c(1,2)) +
   scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
-  theme(text=element_text(size=30))+
-  theme(legend.position = )+
+  theme(text=element_text(size=20))+
+  theme(legend.position = "none", plot.margin = margin(1,1,1.5,1.2, "cm"))+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 rootBund.plot
 
@@ -764,7 +764,7 @@ longestRoot.plot <- ggplot(sum.longestRoot, aes(x=SedOrigin, y=LongestRoot_mm.m,
   scale_linetype_manual(values=c(1,2)) +
   scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
   theme(text=element_text(size=30))+
-  theme(legend.position = )+
+  theme(legend.position = "none", plot.margin = margin(1,1,1.5,1.2, "cm") )+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 longestRoot.plot
 
@@ -854,23 +854,23 @@ below.plot <- ggplot(sum.below, aes(x=SedOrigin, y=sumBel.m, group=PlantOrigin, 
   ylab(expression(paste( "Total Below Biomass (g)"))) +
   scale_linetype_manual(values=c(1,2)) +
   scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
-  theme(text=element_text(size=30))+
-  theme(legend.position = )+
+  theme(text=element_text(size=20))+
+  theme(legend.position = "none", plot.margin = margin(1,1,1.5,1.2, "cm"))+
   scale_x_discrete(NULL, labels = c("BL", "MP")) 
 below.plot
 
 #ANALYSIS
-hist(belBiomass$sumBel)
-belBiomass.2way  <- lmer(sumBel ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID), data=belBiomass, na.action = na.exclude)
-belBiomass.1way <- lmer(sumBel ~ PlantOrigin  + SedOrigin + (1|TankID), data=belBiomass, na.action = na.exclude )
+belBiomass$sqrtBel <- sqrt(belBiomass$sumBel)
+hist(belBiomass$sqrtBel)
+belBiomass.2way  <- lmer(sqrtBel ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID), data=belBiomass, na.action = na.exclude)
+belBiomass.1way <- lmer(sqrtBel ~ PlantOrigin  + SedOrigin + (1|TankID), data=belBiomass, na.action = na.exclude )
 #see if 2way can be dropped
 anova(belBiomass.2way, belBiomass.1way) #drop
 
-belBiomass.full <-lmer(sumBel ~ PlantOrigin  + SedOrigin + (1|TankID), data=belBiomass, na.action = na.exclude )
+belBiomass.full <-lmer(sqrtBel ~ PlantOrigin  + SedOrigin + (1|TankID), data=belBiomass, na.action = na.exclude )
 plot(belBiomass.full)
 qqnorm(resid(belBiomass.full))
 qqline(resid(belBiomass.full))
-shapiro.test(resid(belBiomass.full)) #passes
 summary(belBiomass.full) 
 Anova(belBiomass.full, type=2) #plant
 
@@ -939,7 +939,7 @@ totBio.plot <- ggplot(sum.totBio, aes(x=SedOrigin, y=totalBio.m, group=PlantOrig
   scale_linetype_manual(values=c(1,2)) +
   scale_color_manual(values=c("#0C7BDC", "#FFC20A"))+
   theme(text=element_text(size=30))+
-  theme(legend.position = )+
+  theme(legend.position = "none", plot.margin = margin(1,1,1.5,1.2, "cm")  )+
   scale_x_discrete(NULL, labels = c("BL", "MP"))
 totBio.plot
 
