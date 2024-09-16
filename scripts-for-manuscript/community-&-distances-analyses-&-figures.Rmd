@@ -5,7 +5,7 @@ date: "2024-07-03"
 output: html_document
 ---
 # Introduction:  
-This script is for community analyses and distances found in figures 5A-C.  
+This script is for community analyses and distances found in figures 4A-C.  
 
 ```{r, include=FALSE}
 knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 60), root.dir ="~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment" )
