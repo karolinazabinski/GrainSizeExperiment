@@ -1,0 +1,650 @@
+---
+title: "Plant Figures and Analyses"
+author: "Karolina Zabinski"
+date: "2024-07-02"
+output: pdf_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 60), root.dir ="~/Box-Box/GSE/GrainSizeExperiment" )
+``` 
+
+# Introduction:  
+The following code is for all plant metrics analyses, figures: 1-3, and supplemental material figures 1-2.  
+
+# Setting up workspace:  
+Loading in libraries.  
+```{r, tidy=TRUE, message = FALSE}
+# libraries needed for data manipulation
+library(dplyr)
+library(tidyverse)
+# loading packages needed for data analysis
+library(nlme) 
+library(lme4)
+library(doBy) # creates summary tables
+library(MuMIn)
+library(visreg)
+library(car) # has Anova() function
+library(emmeans)
+# and visualization
+library(ggplot2)
+library(gridExtra)
+library(ggpubr)
+library(cowplot)
+```  
+# Manipulating metadata:  
+Confirming structure of all cols.  
+```{r}
+meta <-  read.csv("~/Box-Box/GSE/GrainSizeExperiment/data/GSEData.csv", header=T, dec=".")
+str(meta) #most things in class they should be
+#convert tank to factor
+meta$TankID <- as.factor(meta$TankID)
+str(meta)
+#convert Dead:LeafGrowth5_mm from int to numeric
+cols <- names(meta)[5:12]
+meta[cols] <- lapply(meta[cols], as.numeric)
+str(meta)
+#convert DaysGrowing:No_RootBundles to numeric
+cols2 <- names(meta)[15:23]
+meta[cols2] <- lapply(meta[cols2], as.numeric)
+str(meta)
+```  
+Calculations of performance.  
+```{r}
+#sums of biomass
+meta <- meta %>% mutate(term.g = Term_FoilPost_g -Term_FoilPre_g) %>%
+  mutate(side.g = Side_FoilPost_g - Side_FoilPre_g) %>% mutate(rhiz.g =Rhiz_FoilPost_g - Rhiz_FoilPre_g) %>%
+  mutate(root.g = Root_FoilPost_g-Root_FoilPre_g)
+str(meta)
+#above, below, A:B
+meta <- meta %>% mutate(sumAbove = rowSums(select(meta, term.g, side.g), na.rm=TRUE))
+meta$sumAbove[meta$sumAbove == 0] <- NA
+
+meta <- meta %>% mutate(sumBel = rowSums(select(meta, rhiz.g, root.g), na.rm=TRUE))
+meta$sumBel[meta$sumBel == 0] <- NA
+
+meta <- meta %>% mutate(ab = sumAbove/sumBel)
+
+meta <- meta %>% mutate(totalBio = sumAbove + sumBel)
+
+#average root hair length
+meta <- meta %>% mutate(rhLength = (root.hair1.mm + root.hair2.mm + root.hair3.mm)/3)
+
+#total growth and total growth rate and productivity
+meta$totalGrowth <-as.numeric(rowSums(meta[, c("LeafGrowth1_mm", "LeafGrowth2_mm", "LeafGrowth3_mm", "LeafGrowth4_mm", "LeafGrowth5_mm")], na.rm = TRUE))
+meta$totalGrowth[meta$totalGrowth == 0] <- NA
+
+meta <- meta %>% mutate(growthRate = totalGrowth/DaysGrowing)
+meta$growthRate[meta$growthRate == 0] <- NA
+
+meta$productivity <- as.numeric(meta$totalGrowth*meta$ShootWidth_mm/meta$DaysGrowing/100) #all NAs remained NAs
+
+#No SS
+meta <- meta %>% mutate(NoSS = ShootCount-1)
+meta$NoSS[meta$NoSS == 0] <- NA
+
+#average ss side
+meta <- meta %>% mutate(avgSsSize = side.g/NoSS)
+
+#Average ss size/rhizome length ratio
+meta <- meta %>% mutate(sizeRhizLengthRatio = avgSsSize/Rhiz_Length_mm)
+str(meta)
+
+# save output
+saveRDS(meta, file="~/Box-Box/GSE/GrainSizeExperiment/output/meta.RDS")
+
+# read in meta
+meta <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/meta.RDS")
+str(meta)
+```  
+
+# General themes and equations:  
+```{r}
+#set function to calculate the mean, standard deviation, length, and standard error of variables
+fun <- function(x,...) {c(m=mean(x, na.rm=T), sd=sd(x,na.rm=T), n = length(x), se=sd(x,na.rm=T)/sqrt(length(x)))}
+
+# set horizontal offset for points so they are easier to see
+hdodge <- position_dodge(width=0.1) 
+
+# set up theme:
+themes <-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+# create distinct color palette for populations
+colors.vec <- c("black", "white")
+
+# shapes for the two levels of PlantOrigin
+shapes.vec <- c(16, 21)  
+  # 16 for black dot & 21 for black dot with white fill
+
+```  
+# Analysis and Visualization:  
+## Growth rate:  
+Plotting:  
+```{r}
+growthRate.data <- meta %>% select (SampleID:TankID, growthRate)
+
+#summary stats
+sum.growth <- summaryBy(growthRate ~ PlantOrigin + SedOrigin, data=growthRate.data, FUN=fun)
+
+growth.sig.label1 <- paste("Pop, p = 0.64")
+growth.sig.label2 <- paste("Sed, p = 0.20")
+growth.sig.label3 <- paste("PopxSed, p = 0.30")
+
+#plot
+growth.plot <- ggplot(sum.growth, aes(x = SedOrigin, y = growthRate.m, group = PlantOrigin, color = PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = growthRate.m + growthRate.se, ymin = growthRate.m - growthRate.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(40, 56)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression(F[0]~Growth~Rate~(cm/day)), x = expression("Sediment Origin")) +
+  theme(legend.position = c(0.86, 0.85), plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 1.1, y = 55.3, label = growth.sig.label1, size = 3) +
+  annotate("text", x = 1.1, y = 54.6, label = growth.sig.label2, size = 3) +
+  annotate("text", x = 1.1, y = 54, label = growth.sig.label3, size = 3)
+growth.plot
+```
+Model selection:  
+```{r}
+hist(growthRate.data$growthRate)
+growth.2way <- lmer(growthRate ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID) , data=growthRate.data, na.action = na.exclude)
+growth.1way <- lmer(growthRate ~ PlantOrigin + SedOrigin+ (1|TankID), data=growthRate.data, na.action = na.exclude)
+#see if 2way can drop
+anova(growth.2way, growth.1way) #drop
+
+growth.full <- lmer(growthRate ~ PlantOrigin + SedOrigin+ (1|TankID), data=growthRate.data, na.action = na.exclude)
+plot(growth.full)
+qqnorm(resid(growth.full))
+summary(growth.full) 
+Anova(growth.full) #no differences
+```  
+## No. SS:  
+Plotting:  
+```{r}
+ssCount <- meta %>% select (SampleID:TankID, NoSS)
+#summary stats
+sum.ssCount <- summaryBy(NoSS ~ PlantOrigin + SedOrigin, data=ssCount, FUN=fun)
+
+ss.sig.label1 <- paste("Pop, p = 0.68")
+ss.sig.label2 <- paste("Sed, p = 0.12")
+ss.sig.label3 <- paste("PopxSed, p = 0.67")
+
+ssCount.plot <-ggplot(sum.ssCount, aes(x=SedOrigin, y=NoSS.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = NoSS.m + NoSS.se, ymin = NoSS.m - NoSS.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(1,2.2)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("Number of Sideshoots"), x= expression("Sediment Origin")) +
+  theme(legend.position = c(0.86, 0.85), plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 1.1, y = 2.15, label = ss.sig.label1, size = 3) +
+  annotate("text", x = 1.1, y = 2.1, label = ss.sig.label2, size = 3) +
+  annotate("text", x = 1.1, y = 2.05, label = ss.sig.label3, size = 3)
+ssCount.plot
+```  
+Model selection:  
+```{r}
+hist(ssCount$NoSS)
+ssCount.2way  <- glm(NoSS ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin, data=ssCount, na.action = na.exclude, family= "poisson")
+ssCount.1way <- glm(NoSS ~ PlantOrigin + SedOrigin, data=ssCount, na.action = na.exclude, family= "poisson")
+#see if can drop 2way
+anova(ssCount.2way, ssCount.1way, test = "Chisq") #drop
+ssCount.full <- glm(NoSS ~ PlantOrigin + SedOrigin, data=ssCount, na.action = na.exclude, family= "poisson")
+summary(ssCount.full)
+Anova(ssCount.full, type=2) 
+#no effects
+```  
+## Above:Below:  
+Plotting:  
+```{r}
+ab.ratio <- meta %>% select (SampleID:TankID, ab)
+#summary stats
+sum.ab <- summaryBy(ab ~ PlantOrigin + SedOrigin, data=ab.ratio, FUN=fun)
+
+ab.sig.label1 <- expression("Pop, p = 3.14" %*% 10^-7)
+ab.sig.label2 <- paste("Sed, p = 0.00")
+ab.sig.label3 <- paste("PopxSed, p = 0.38")
+
+abRatio.plot <-ggplot(sum.ab, aes(x=SedOrigin, y=ab.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = ab.m + ab.se, ymin = ab.m - ab.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(1.3,3)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("Above:Below Biomass"), x= expression("Sediment Origin")) +
+  theme(legend.position = c(0.86, 0.85), plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 1.1, y = 2.95, label = ab.sig.label1, size = 3, parse = TRUE) +
+  annotate("text", x = 1.1, y = 2.87, label = ab.sig.label2, size = 3) +
+  annotate("text", x = 1.1, y = 2.79, label = ab.sig.label3, size = 3)
+abRatio.plot
+```  
+Model selection:  
+```{r}
+hist(ab.ratio$ab)
+ab.2way <- lmer(ab ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID) , data=ab.ratio, na.action = na.exclude)
+ab.1way <- lmer(ab ~ PlantOrigin + SedOrigin+ (1|TankID), data=ab.ratio, na.action = na.exclude)
+#see if 2way can drop
+anova(ab.2way, ab.1way) #drop
+
+ab.full <- lmer(ab ~ PlantOrigin + SedOrigin+ (1|TankID), data=ab.ratio, na.action = na.exclude)
+plot(ab.full)
+qqnorm(resid(ab.full))
+summary(ab.full) 
+Anova(ab.full) #no differences
+```  
+## Figure of no effects (SM Fig 1):  
+plot growth rate and ss side by side with legend on bottom.  
+```{r}
+growthSS.plot <- ggarrange(growth.plot, ssCount.plot,
+                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+growthSS.plot
+
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/noEffects.png", width=6, height =5, growthSS.plot)
+```
+
+## Total Biomass:  
+Plotting:  
+```{r}
+totalBiomass <- meta %>% select(SampleID:TankID, totalBio)
+#summary stats
+sum.totBio <- summaryBy(totalBio ~ PlantOrigin + SedOrigin, data=totalBiomass, FUN=fun)
+
+tot.Bio.sig.label1 <- expression("Pop, p = 1.2" %*% 10^-13)
+tot.Bio.sig.label2 <- paste("Sed, p = 0.34")
+tot.Bio.sig.label3 <- paste("PopxSed, p = 0.79")
+
+# plot
+totBio.plot <- ggplot(sum.totBio, aes(x=SedOrigin, y=totalBio.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = totalBio.m + totalBio.se, ymin = totalBio.m - totalBio.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0.6, 1.9)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("Total Biomass (g)"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+    annotate("text", x = 1.1, y = 1.85, label = tot.Bio.sig.label1, size = 3, parse = TRUE) +
+  annotate("text", x = 1.1, y = 1.8, label = tot.Bio.sig.label2, size = 3) +
+  annotate("text", x = 1.1, y = 1.75, label = tot.Bio.sig.label3, size = 3)
+totBio.plot
+```  
+model selection.  
+```{r}
+totBiomass.2way  <- lmer(totalBio ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID), data=totalBiomass, na.action = na.exclude)
+totBiomass.1way <- lmer(totalBio ~ PlantOrigin  + SedOrigin + (1|TankID), data=totalBiomass, na.action = na.exclude )
+#see if 2way can drop
+anova(totBiomass.2way, totBiomass.1way) #drop
+totBiomass.full <-  lmer(totalBio ~ PlantOrigin  + SedOrigin + (1|TankID), data=totalBiomass, na.action = na.exclude )
+plot(totBiomass.full)
+qqnorm(resid(totBiomass.full))
+hist(resid(totBiomass.full))
+summary(totBiomass.full) 
+Anova(totBiomass.full)
+```  
+## F0 Biomass:  
+plotting.  
+```{r}
+term <- meta %>% select (SampleID:TankID, term.g)
+#summary stats
+sum.term <- summaryBy(term.g ~ PlantOrigin + SedOrigin, data=term, FUN=fun)
+
+term.sig.label1 <- expression("Pop, p = 5.26" %*% 10^-12)
+term.sig.label2 <- paste("Sed, p = 0.26")
+term.sig.label3 <- paste("PopxSed, p = 0.63")
+
+# plot
+term.plot <- ggplot(sum.term, aes(x=SedOrigin, y=term.g.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = term.g.m + term.g.se, ymin = term.g.m - term.g.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0.3, 1)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression(F[0]~Biomass~(g)), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 1.1, y = 0.98, label = term.sig.label1, size = 3, parse = TRUE) +
+  annotate("text", x = 1.1, y = 0.95, label = term.sig.label2, size = 3) +
+  annotate("text", x = 1.1, y = 0.92, label = term.sig.label3, size = 3)
+term.plot
+```  
+Model selection.  
+```{r}
+str(term)
+hist(term$term.g)
+term.2way  <- lmer(term.g ~ PlantOrigin*SedOrigin +PlantOrigin +SedOrigin + (1|TankID), data=term, na.action = na.exclude)
+term.1way <- lmer(term.g ~ PlantOrigin +SedOrigin+ (1|TankID) , data=term, na.action = na.exclude)
+#determine if 2way can drop
+anova(term.2way, term.1way) #drop
+term.full <- lmer(term.g ~ PlantOrigin +SedOrigin + (1|TankID), data=term, na.action = na.exclude)
+plot(term.full)
+qqnorm(resid(term.full))
+hist(resid(term.full))
+summary(term.full) 
+Anova(term.full, type = 2)
+```  
+
+## No. Root Bundles:  
+plotting.  
+```{r}
+rootBund <- meta %>% select (SampleID:TankID, No_RootBundles)
+#summary stats
+sum.rootBund <- summaryBy(No_RootBundles ~ PlantOrigin + SedOrigin, data=rootBund, FUN=fun)
+
+rootBund.sig.label1 <- expression("Pop, p = 014")
+rootBund.sig.label2 <- paste("Sed, p = 0.71")
+rootBund.sig.label3 <- paste("PopxSed, p = 0.42")
+
+# plot
+rootBund.plot <- ggplot(sum.rootBund, aes(x=SedOrigin, y=No_RootBundles.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = No_RootBundles.m + No_RootBundles.se, ymin = No_RootBundles.m - No_RootBundles.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(7.5,11.8)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("No. Root Bundles"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 2, y = 7.95, label = rootBund.sig.label1, size = 3) +
+  annotate("text", x = 2, y = 7.8, label = rootBund.sig.label2, size = 3) +
+  annotate("text", x = 2, y = 7.65, label = rootBund.sig.label3, size = 3)
+
+rootBund.plot
+```  
+model selection.  
+```{r}
+rootBund.2way  <- glmer(No_RootBundles ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID), data=rootBund, na.action = na.exclude, family= "poisson")
+rootBund.1way <- glmer(No_RootBundles ~ PlantOrigin + SedOrigin+ (1|TankID), data=rootBund, na.action = na.exclude, family= "poisson")
+#see if 2way can drop
+anova(rootBund.2way, rootBund.1way) #drop
+rootBund.full <- glmer(No_RootBundles ~ PlantOrigin + SedOrigin+ (1|TankID), data=rootBund, na.action = na.exclude, family= "poisson")
+summary(rootBund.full) 
+Anova(rootBund.full) #plant
+```  
+## Group plot of fixed traits (Fig. 1):  
+```{r}
+fixedTraits.plot <- ggarrange(totBio.plot, term.plot,rootBund.plot,
+                    labels = c("A.", "B.", "C."), ncol=3, nrow=1, common.legend = TRUE, legend="bottom")
+fixedTraits.plot
+
+ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/plant-figures/fixed-plant-traits.png", width= 9, height = 5, fixedTraits.plot)
+```
+
+## Root Length:  
+plotting.  
+```{r}
+longRt <- meta %>% select(SampleID:TankID, LongestRoot_mm)
+#summary stats
+sum.longestRoot <- summaryBy(LongestRoot_mm ~ PlantOrigin + SedOrigin, data=longRt, FUN=fun)
+
+longRt.sig.label1 <- expression("Pop, p = 0.57")
+longRt.sig.label2 <- expression("Sed, p = <2.0" %*% 10^-16)
+longRt.sig.label3 <- paste("PopxSed, p = 0.29")
+
+# plot
+longestRoot.plot <- ggplot(sum.longestRoot, aes(x=SedOrigin, y=LongestRoot_mm.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = LongestRoot_mm.m + LongestRoot_mm.se, ymin = LongestRoot_mm.m - LongestRoot_mm.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(45,125)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("Longest Root (mm)"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+    annotate("text", x = 1.1, y = 123, label = longRt.sig.label1, size = 3) +
+  annotate("text", x = 1.1, y = 120, label = longRt.sig.label2, size = 3, parse = TRUE) +
+  annotate("text", x = 1.1, y = 117, label = longRt.sig.label3, size = 3)
+longestRoot.plot
+
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/longest-root.pdf", width=6, height =4, longestRoot.plot)
+```  
+model selection.  
+```{r}
+hist(longRt$LongestRoot_mm)
+longRt.2way  <- lmer(LongestRoot_mm ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+  (1|TankID), data=longRt, na.action = na.exclude)
+longRt.1way <- lmer(LongestRoot_mm ~ PlantOrigin  + SedOrigin + (1|TankID), data=longRt, na.action = na.exclude )
+#seeding if 2way can be dropped
+anova(longRt.2way, longRt.1way) #drop
+longRt.full <- lmer(LongestRoot_mm ~ PlantOrigin  + SedOrigin + (1|TankID), data=longRt, na.action = na.exclude )
+plot(longRt.full)
+qqnorm(resid(longRt.full))
+hist(resid(longRt.full))
+summary(longRt.full) 
+Anova(longRt.full) 
+```  
+
+## Average F1 Size:  
+plotting.   
+```{r}
+avgSs <- meta %>% select (SampleID:TankID, avgSsSize)
+
+#Analysis removing 0s and negative outliers
+avgSs <- avgSs[avgSs$SampleID != "4-4", ]
+avgSs <- avgSs[avgSs$SampleID != "3-6", ]
+avgSs <- avgSs[avgSs$SampleID != "3-1", ]
+
+#summary stats
+sum.avgSsSize <- summaryBy(avgSsSize ~ PlantOrigin + SedOrigin, data=avgSs, FUN=fun)
+
+f1Size.sig.label1 <- expression("Pop, p = 9.60" %*% 10^-7)
+f1Size.sig.label2 <- paste("Sed, p = 0.00")
+f1Size.sig.label3 <- paste("PopxSed, p = 0.88")
+
+# plot
+avgSs.plot <- ggplot(sum.avgSsSize, aes(x=SedOrigin, y=avgSsSize.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = avgSsSize.m + avgSsSize.se, ymin = avgSsSize.m - avgSsSize.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0.04,0.16)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression(F[1]~Size~(g/side~shoot)), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 1.9, y = 0.055, label = tot.Bio.sig.label1, size = 3, parse = TRUE) +
+  annotate("text", x = 1.9, y = 0.05, label = tot.Bio.sig.label2, size = 3) +
+  annotate("text", x = 1.9, y = 0.045, label = tot.Bio.sig.label3, size = 3)
+avgSs.plot
+```  
+model selection.  
+```{r}
+hist(avgSs$avgSsSize) 
+avgSs$logSS <- log(avgSs$avgSsSize)
+hist(avgSs$logSS) #more normal with an outlier
+avgSs.2way  <- lmer(logSS ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+avgSs.1way <- lmer(logSS ~  PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+#see if 2way can drop
+anova(avgSs.2way, avgSs.1way) #drop 
+avgSs.full <-lmer( logSS ~ PlantOrigin + SedOrigin + (1|TankID), data=avgSs, na.action = na.exclude)
+plot(avgSs.full)
+qqnorm(resid(avgSs.full))
+hist(resid(avgSs.full))
+summary(avgSs.full) 
+Anova(avgSs.full, type = 2) # plant and sed origin
+```  
+## Group plot of additive traits (SM Fig 2):  
+```{r}
+additiveTraits.plot <- ggarrange(avgSs.plot, abRatio.plot,
+                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+additiveTraits.plot
+
+ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/plant-figures/additive-plant-traits.png", width=6, height =5, additiveTraits.plot)
+```
+## ASV Richness:  
+loading in data:
+```{r}
+# loading in rds
+Sing.alpha <- readRDS("~/Box Sync/GSE/GrainSizeExperiment/output/singletons.alphaDiv.rds")
+
+# subset df
+singletons.rich.df <- Sing.alpha %>% select(plant.origin, sed.origin, tank.id, Observed)
+
+# calculate summary stats
+singletons.rich.sum <- summaryBy(Observed ~ plant.origin + sed.origin, data=singletons.rich.df, FUN= fun)
+
+rich.sig.label1 <- expression("Pop, p = 0.08")
+rich.sig.label2 <- expression("Sed, p = 0.02")
+rich.sig.label3 <- paste("PopxSed, p = 0.26")
+
+# plot
+Sing.rich.plot <- ggplot(singletons.rich.sum, aes(x=sed.origin, y=Observed.m, group=plant.origin, color=plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Observed.m + Observed.se, ymin = Observed.m - Observed.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits =c(2100,2950)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("ASV Richness"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+    annotate("text", x = 1.95, y = 2930, label = rich.sig.label1, size = 3) +
+  annotate("text", x = 1.95, y = 2900, label = rich.sig.label2, size = 3) +
+  annotate("text", x = 1.95, y = 2870, label = rich.sig.label3, size = 3)
+Sing.rich.plot
+``` 
+## Group plot of plastic traits (Fig. 2):  
+```{r}
+plasticTraits.plot <- ggarrange(longestRoot.plot, Sing.rich.plot,
+                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+plasticTraits.plot
+
+ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/plant-figures/plastic-plant-traits.png", width=6, height =5, plasticTraits.plot)
+```
+## Rhizome length:  
+plotting.  
+```{r}
+rhizLength <- meta %>% select (SampleID:TankID, Rhiz_Length_mm)
+
+#summary stats
+sum.rhizLength <- summaryBy(Rhiz_Length_mm ~ PlantOrigin + SedOrigin, data=rhizLength, FUN=fun)
+
+rhizLength.sig.label1 <- expression("Pop, p = 6.12e" %*% 10^-12)
+rhizLength.sig.label2 <- paste("Sed, p = 0.08")
+rhizLength.sig.label3 <- paste("PopxSed, p = 0.00")
+
+# plot
+rhizLength.plot <- ggplot(sum.rhizLength, aes(x=SedOrigin, y=Rhiz_Length_mm.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Rhiz_Length_mm.m + Rhiz_Length_mm.se, ymin = Rhiz_Length_mm.m - Rhiz_Length_mm.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(60,130)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression(Rhizome~Length~(mm)), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+    annotate("text", x = 1.8, y = 127, label = rhizLength.sig.label1, size = 3, parse = TRUE) +
+  annotate("text", x = 1.8, y = 124, label = rhizLength.sig.label2, size = 3) +
+  annotate("text", x = 1.8, y = 121, label = rhizLength.sig.label3, size = 3)
+rhizLength.plot
+```  
+model selection.  
+```{r}
+#analysis with transformation
+rhizLength$sqrtRhiz <- sqrt(rhizLength$Rhiz_Length_mm)
+hist(rhizLength$sqrtRhiz )
+rhizLength.2way  <- lmer(sqrtRhiz ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=rhizLength, na.action = na.exclude)
+rhizLength.1way <- lmer(sqrtRhiz ~  PlantOrigin + SedOrigin+ (1|TankID), data=rhizLength, na.action = na.exclude)
+#see if can drop 2way
+anova(rhizLength.2way, rhizLength.1way) #keep
+rhizLength.full <- lmer(sqrtRhiz ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=rhizLength, na.action = na.exclude)
+plot(rhizLength.full)
+hist(resid(rhizLength.full))
+qqnorm(resid(rhizLength.full))
+summary(rhizLength.full) 
+Anova(rhizLength.full, type=2)  # interaction sig
+```  
+## Porewater hydrogen sulfide:  
+plotting.  
+```{r}
+sulfide.df <- meta %>% select (SampleID:TankID, sulfide.um)
+
+#summary stats
+sum.sulfide <- summaryBy(sulfide.um ~ PlantOrigin + SedOrigin, data=sulfide.df, FUN=fun)
+
+sulfide.sig.label1 <- expression("Pop, p = 0.01")
+sulfide.sig.label2 <- expression("Sed, p = 6.46" %*% 10^-7)
+sulfide.sig.label3 <- paste("PopxSed, p = 0.00")
+
+# plot
+sulfide.plot <- ggplot(sum.sulfide, aes(x=SedOrigin, y=sulfide.um.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = sulfide.um.m + sulfide.um.se, ymin = sulfide.um.m - sulfide.um.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0,175)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression(Porewater~H[2]~S~(mu~M)), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+    annotate("text", x = 1.9, y = 168, label = sulfide.sig.label1, size = 3) +
+  annotate("text", x = 1.9, y = 160, label = sulfide.sig.label2, size = 3, parse = TRUE) +
+  annotate("text", x = 1.9, y = 152, label = sulfide.sig.label3, size = 3)
+sulfide.plot
+
+```  
+Model selection.  
+```{r}
+sulfide.df$logSulfide <- log(sulfide.df$sulfide)
+hist(sulfide.df$logSulfide) #more normal with an outlier
+sulfide.2way  <- lmer(logSulfide ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=sulfide.df, na.action = na.exclude)
+sulfide.1way <- lmer(logSulfide ~  PlantOrigin + SedOrigin + (1|TankID), data=sulfide.df, na.action = na.exclude)
+#see if 2way can drop
+anova(sulfide.2way, sulfide.1way) # 0.0003615 keep 2 way 
+sulfide.full <-lmer(logSulfide ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=sulfide.df, na.action = na.exclude)
+plot(sulfide.full)
+qqnorm(resid(sulfide.full))
+hist(resid(sulfide.full))
+summary(sulfide.full) 
+Anova(sulfide.full, type = 2) # plant*sediment origin 0.002335
+``` 
+## Group plot of interactive traits (Fig 3):  
+```{r}
+interactiveTraits.plot <- ggarrange(rhizLength.plot, sulfide.plot,
+                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+interactiveTraits.plot
+
+ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/plant-figures/interactive-plant-traits.png", width=6, height =5, interactiveTraits.plot)
+```

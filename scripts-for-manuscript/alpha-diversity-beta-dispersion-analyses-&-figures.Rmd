@@ -1,0 +1,380 @@
+---
+title: "Alpha Diversity and Beta Dispersion Analyses and Figures"
+author: "Karolina Zabinski"
+date: "2024-07-03"
+output: pdf_document
+---
+
+# Introduction:  
+The following script is to analyse alpha diversity and beta dispersion found in SM Fig. 5A-D and ASV richness analyses corresponding to Fig. 2B.  
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 60), root.dir ="~/Box Sync/GSE/GrainSizeExperiment" )
+```  
+
+Let's load in our libraries
+```{r, message = FALSE}
+library(dplyr) #manipulate df
+library(tidyverse)
+library(doBy)
+library(gridExtra)
+library(ggpubr)
+library(formatR)
+library(reshape2)
+library(tidyr)
+library(ggplot2)
+library(lme4)
+library(car)
+library(emmeans)
+library(gridExtra)
+library(cowplot)
+library(vegan)
+library(usethis)
+library(phyloseq)
+library(speedyseq)
+```  
+# General themes and equations  
+
+```{r, echo=TRUE, results='hide'}
+# set horizontal offset for points so they are easier to see
+hdodge <- position_dodge(width=0.1) 
+
+# set up theme:
+themes <-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+# loading in function
+fun <- function(x,...) {c(m=mean(x, na.rm=T), sd=sd(x,na.rm=T), n = length(x), se=sd(x,na.rm=T)/sqrt(length(x)))}
+
+# create distinct color palette for populations
+colors.vec <- c("black", "white")
+
+# shapes for the two levels of PlantOrigin
+shapes.vec <- c(16, 21)  
+  # 16 for black dot & 21 for black dot with white fill
+```
+# Alpha diversity, SM Fig 5A-C:  
+
+Load in filtered ps object.  
+```{r}
+singletons.ps <- readRDS("~/Box Sync/GSE/GrainSizeExperiment/output/ps.no0.rds")
+singletons.ps %>% otu_table %>% print(n=5) # looks good
+length(which(taxa_sums(singletons.ps) == 1))
+  # 3225
+```  
+Create sample data frame.  
+```{r}
+Sing.sample.df <- data.frame(sample_data(singletons.ps))
+str(Sing.sample.df) # looks good
+```  
+Estimate alpha diversity metrics.  
+```{r, echo=F}
+
+# estimate alpha diversity (non-rarefied)
+Sing.rich <- estimate_richness(singletons.ps, measures=c("Observed", "Shannon", "Simpson", "InvSimpson")) # 
+
+#make into a dataframe
+Sing.alphdiv <- as.data.frame(Sing.rich)
+
+#For merging, name ID columns the same thing
+Sing.alphdiv$sample.no <- rownames(Sing.alphdiv)
+
+# merge alpha diversity and sample meta-data
+Sing.alpha <- merge(Sing.alphdiv, Sing.sample.df, by = "sample.no")
+
+# add column for Hill number order 1 (q=1): 
+Sing.alpha$Hill_q1 <- exp(Sing.alpha$Shannon)
+
+# Hill no. order 2 (q=2) is already calculated (InvSimpson column)
+
+# save as RDS
+saveRDS(Sing.alpha, file = "~/Box Sync/GSE/GrainSizeExperiment/output/singletons.alphaDiv.rds" )
+
+# loading in rds
+Sing.alpha <- readRDS("~/Box Sync/GSE/GrainSizeExperiment/output/singletons.alphaDiv.rds")
+print(Sing.alpha)
+```  
+## Shannon diversity Fig 5B:  
+Visualization:  
+```{r}
+# subset df
+singletons.shannon.df <- Sing.alpha %>% select(plant.origin, sed.origin, tank.id, Shannon)
+
+# calculate summary stats
+singletons.shannon.sum <- summaryBy(Shannon ~ plant.origin + sed.origin, data=singletons.shannon.df, FUN= fun)
+
+alpha.sig.label1 <- paste("Pop, p = 0.10")
+alpha.sig.label2 <- paste("Sed, p = 0.49")
+alpha.sig.label3 <- paste("PopxSed, p = 0.38")
+
+# plot
+Sing.shannon.plot <- ggplot(singletons.shannon.sum, aes(x=sed.origin, y=Shannon.m, group=plant.origin, color=plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Shannon.m + Shannon.se, ymin = Shannon.m - Shannon.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(4.5, 5.5)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  themes + 
+  scale_x_discrete(labels= c("COARSE","FINE")) +
+  labs(y = expression("Shannon diversity"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+  annotate("text", x = 1.9, y = 5.46, label = alpha.sig.label1, size = 3) +
+  annotate("text", x = 1.9, y = 5.4, label = alpha.sig.label2, size = 3) +
+  annotate("text", x = 1.9, y = 5.34, label = alpha.sig.label3, size = 3)
+
+Sing.shannon.plot
+```  
+Analysis.  
+```{r}
+# model selection
+shannon.2way <- lmer(Shannon ~ plant.origin*sed.origin + plant.origin + sed.origin + (1|tank.id), data=Sing.alpha, na.action = na.exclude)
+shannon.1way <- lmer(Shannon ~  plant.origin + sed.origin + (1|tank.id), data=Sing.alpha, na.action = na.exclude)
+anova(shannon.2way,shannon.1way) # drop 2-way (p=0.3812)
+
+# running model
+shannon.full <- lmer(Shannon ~  plant.origin + sed.origin + (1|tank.id), data=Sing.alpha, na.action = na.exclude)
+plot(shannon.full)
+qqnorm(resid(shannon.full))
+hist(resid(shannon.full)) # normal enough
+summary(shannon.full) 
+Anova(shannon.full, type= 2) 
+```  
+## Hill q=1 number SM Fig 5B:  
+```{r}
+# subset df
+singletons.Hill1.df <- Sing.alpha %>% select(plant.origin, sed.origin, tank.id, Hill_q1)
+
+# calculate summary stats
+singletons.Hillq1.sum <- summaryBy(Hill_q1 ~ plant.origin + sed.origin, data=singletons.Hill1.df, FUN= fun)
+
+hill.sig.label1 <- paste("Pop, p = 0.10")
+hill.sig.label2 <- paste("Sed, p = 0.44")
+hill.sig.label3 <- paste("PopxSed, p = 0.23")
+
+# plot
+Sing.Hillq1.plot <- ggplot(singletons.Hillq1.sum, aes(x=sed.origin, y=Hill_q1.m, group=plant.origin, color=plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Hill_q1.m + Hill_q1.se, ymin = Hill_q1.m - Hill_q1.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(115, 265)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec,labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  themes + 
+  scale_x_discrete(labels= c("COARSE","FINE")) +
+  labs(y = expression("Hill no. 1"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+    annotate("text", x = 1.9, y = 260, label = hill.sig.label1, size = 3) +
+  annotate("text", x = 1.9, y = 252, label = hill.sig.label2, size = 3) +
+  annotate("text", x = 1.9, y = 244, label = hill.sig.label3, size = 3)
+Sing.Hillq1.plot
+```  
+Analysis:  
+```{r}
+# model selection
+hill.2way <- lmer(Hill_q1 ~ plant.origin*sed.origin + plant.origin + sed.origin + (1|tank.id), data=singletons.Hill1.df, na.action = na.exclude)
+hill.1way <- lmer(Hill_q1 ~  plant.origin + sed.origin + (1|tank.id), data=singletons.Hill1.df, na.action = na.exclude)
+anova(hill.2way,hill.1way) # drop 2-way (p=0.2268)
+
+# running model
+hill.full <- lmer(Hill_q1 ~  plant.origin + sed.origin + (1|tank.id), data=singletons.Hill1.df, na.action = na.exclude)
+plot(hill.full)
+qqnorm(resid(hill.full))
+hist(resid(hill.full)) # normal enough
+summary(hill.full) 
+Anova(hill.full, type= 2) 
+```  
+## Richness Fig 2B:  
+```{r}
+# subset df
+singletons.rich.df <- Sing.alpha %>% select(plant.origin, sed.origin, tank.id, Observed)
+
+# calculate summary stats
+singletons.rich.sum <- summaryBy(Observed ~ plant.origin + sed.origin, data=singletons.rich.df, FUN= fun)
+
+# plot data
+Sing.rich.plot <- ggplot(singletons.rich.sum, aes(x=sed.origin, y=Observed.m, group=plant.origin, color=plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Observed.m + Observed.se, ymin = Observed.m - Observed.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits =c(2100,2950)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  themes + 
+  scale_x_discrete(labels= c("COARSE","FINE")) +
+  labs(y = expression("ASV Richness"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20))
+Sing.rich.plot
+```  
+Analysis:  
+```{r}
+# model selection
+rich.2way <- lmer(Observed ~ plant.origin*sed.origin + plant.origin + sed.origin + (1|tank.id), data=singletons.rich.df, na.action = na.exclude)
+rich.1way <- lmer(Observed ~  plant.origin + sed.origin + (1|tank.id), data=singletons.rich.df, na.action = na.exclude)
+anova(rich.2way,rich.1way) # drop 2-way (p=0.2615)
+
+# running model
+rich.full <- lmer(Observed ~  plant.origin + sed.origin + (1|tank.id), data=singletons.rich.df, na.action = na.exclude)
+plot(rich.full)
+qqnorm(resid(rich.full))
+hist(resid(rich.full)) # normal enough
+summary(rich.full) 
+Anova(rich.full, type= 2) 
+```  
+## Inverse Simpson SM Fig 5C:  
+```{r}
+# subset df
+singletons.invSimp.df <- Sing.alpha %>% select(plant.origin, sed.origin, tank.id, InvSimpson)
+
+# calculate summary stats
+singletons.invSimp.sum <- summaryBy(InvSimpson ~ plant.origin + sed.origin, data=singletons.invSimp.df, FUN= fun)
+
+invSimp.sig.label1 <- paste("Pop, p = 0.14")
+invSimp.sig.label2 <- paste("Sed, p = 0.38")
+invSimp.sig.label3 <- paste("PopxSed, p = 0.48")
+
+# plot
+Sing.invSimp.plot <- ggplot(singletons.invSimp.sum, aes(x=sed.origin, y=InvSimpson.m, group=plant.origin, color=plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = InvSimpson.m + InvSimpson.se, ymin = InvSimpson.m - InvSimpson.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(20,55)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  themes + 
+  scale_x_discrete(labels= c("COARSE","FINE")) +
+  labs(y = expression("Inverse Simpson"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+  annotate("text", x = 1.9, y = 25, label = invSimp.sig.label1, size = 3) +
+  annotate("text", x = 1.9, y = 23, label = invSimp.sig.label2, size = 3) +
+  annotate("text", x = 1.9, y = 21, label = invSimp.sig.label3, size = 3)
+Sing.invSimp.plot
+```  
+Analysis:  
+```{r}
+# model selection
+invSimp.2way <- lmer(InvSimpson ~ plant.origin*sed.origin + plant.origin + sed.origin + (1|tank.id), data=singletons.invSimp.df, na.action = na.exclude)
+invSimp.1way <- lmer(InvSimpson ~  plant.origin + sed.origin + (1|tank.id), data=singletons.invSimp.df, na.action = na.exclude)
+anova(invSimp.2way,invSimp.1way) # drop 2-way (p=0.4756)
+
+# running model
+invSimp.full <- lmer(InvSimpson ~  plant.origin + sed.origin + (1|tank.id), data=singletons.invSimp.df, na.action = na.exclude)
+plot(invSimp.full)
+qqnorm(resid(invSimp.full))
+hist(resid(invSimp.full)) # normal enough
+summary(invSimp.full) 
+Anova(invSimp.full, type= 2) 
+```  
+# Beta Dispersion SM Fig 5D:  
+Loading in relative abundance ps object.  
+```{r}
+rel.ps <- readRDS("~/Box Sync/GSE/GrainSizeExperiment/output/ps_rel.rds")
+rel.ps %>% otu_table %>% print(n=5) # looks good
+```  
+Calculating dispersion for analyses across population and sediment origin, then saving as RDS.   
+```{r}
+# make your otu_table into a matrix
+otu.rel.matrix <- as.matrix(otu_table(rel.ps)) 
+
+# isolate metadata
+metadata.df <- sample_data(rel.ps)
+
+# Groups being compared: plant.origin & sed.origin
+
+# make new column variable combining other factors
+metadata.df$combined_trt <- paste(metadata.df$plant.origin, metadata.df$sed.origin, sep= "")
+
+# get Bray Curtis distance between samples 
+all.bc <- vegan::vegdist(otu.rel.matrix, method="bray") 
+
+# calculate multivariate dispersion
+# dispersion of samples relative to group median 
+# for each plant origin x sediment origin type combo
+all.d <-betadisper(all.bc, group=metadata.df$combined_trt) 
+
+# test for differences in dispersions between groups
+anova(all.d) 
+
+# combine dispersion data with meta data
+all.disp.df <- as.data.frame(all.d$distances)
+all.disp.df$Sample.id <- rownames(all.disp.df)
+colnames(all.disp.df)[1] <- "Dispersion"
+metadata.df <- data.frame(metadata.df)
+metadata.df$Sample.id <- rownames(metadata.df)
+
+# merge dispersions with metadata
+all.disp.df2 <- merge(all.disp.df, metadata.df, by = "Sample.id")
+
+# save as RDS
+saveRDS(all.disp.df2, file = "~/Box Sync/GSE/GrainSizeExperiment/output/dispersion.rds")
+```  
+Visualizations. 
+```{r}
+# calculate summary stats
+disp.sum <- summaryBy(Dispersion ~ plant.origin + sed.origin, data=all.disp.df2, FUN= fun)
+
+disp.sig.label1 <- paste("Pop, p = 0.04")
+disp.sig.label2 <- paste("Sed, p = 0.41")
+disp.sig.label3 <- paste("PopxSed, p = 0.97")
+
+# plot data
+disp.plot <- ggplot(disp.sum, aes(x=sed.origin, y=Dispersion.m, group=plant.origin, color=plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Dispersion.m + Dispersion.se, ymin = Dispersion.m - Dispersion.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0.25, 0.50)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  themes + 
+  scale_x_discrete(labels= c("COARSE","FINE")) +
+  labs(y = expression("Beta Dispersion"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) +
+    annotate("text", x = 1.9, y = 0.29, label = disp.sig.label1, size = 3) +
+  annotate("text", x = 1.9, y = 0.275, label = disp.sig.label2, size = 3) +
+  annotate("text", x = 1.9, y = 0.26, label = disp.sig.label3, size = 3)
+disp.plot
+```  
+Analysis:  
+```{r}
+# model selection
+disp.2way <- lmer(Dispersion ~ plant.origin*sed.origin + plant.origin + sed.origin + (1|tank.id), data=all.disp.df2, na.action = na.exclude)
+disp.1way <- lmer(Dispersion ~  plant.origin + sed.origin + (1|tank.id), data=all.disp.df2, na.action = na.exclude)
+anova(disp.2way,disp.1way) # drop 2-way (p=0.9714)
+
+# running model
+disp.full <- lmer(Dispersion ~  plant.origin + sed.origin + (1|tank.id), data=all.disp.df2, na.action = na.exclude)
+plot(disp.full)
+qqnorm(resid(disp.full))
+hist(resid(disp.full)) # normal enough
+summary(disp.full) 
+Anova(disp.full, type= 2) 
+```  
+# Grouping alpha diversity figures:  
+```{r}
+alphaTraits.plot <- ggarrange(Sing.shannon.plot, Sing.Hillq1.plot,Sing.invSimp.plot,disp.plot,
+                    labels = c("A.", "B.", "C.", "D."), ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
+alphaTraits.plot
+
+ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/plant-figures/alpha-diversity-traits.png", width=8, height =8, alphaTraits.plot)
+```
+
+
+
+
+
+
+
+
+
+
+
+

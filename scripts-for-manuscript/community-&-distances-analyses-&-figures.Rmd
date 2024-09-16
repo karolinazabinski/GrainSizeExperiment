@@ -1,0 +1,315 @@
+---
+title: "Community and Distances Analyses and Figures"
+author: "Karolina Zabinski"
+date: "2024-07-03"
+output: html_document
+---
+# Introduction:  
+This script is for community analyses and distances found in figures 5A-C.  
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 60), root.dir ="~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment" )
+```  
+
+Let's load in our libraries
+```{r, message = FALSE}
+library(dplyr) #manipulate df
+library(tidyverse)
+library(doBy)
+library(gridExtra)
+library(ggpubr)
+library(formatR)
+library(reshape2)
+library(tidyr)
+library(ggplot2)
+library(lme4)
+library(car)
+library(emmeans)
+library(gridExtra)
+library(cowplot)
+library(vegan)
+library(usethis)
+library(phyloseq)
+library(speedyseq)
+```  
+# General themes and equations:   
+```{r, echo=TRUE, results='hide'}
+# set horizontal offset for points so they are easier to see
+hdodge <- position_dodge(width=0.7) 
+
+# set up theme:
+themes <-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+# loading in function
+fun <- function(x,...) {c(m=mean(x, na.rm=T), sd=sd(x,na.rm=T), n = length(x), se=sd(x,na.rm=T)/sqrt(length(x)))}
+```  
+# Only S Cycling Families, Fig 5A:  
+First, I want to see how an nmds of all populations compare when I only include these DA families.  
+```{r}
+# load data
+rel.ps <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/ps_rel.rds")
+
+# create vec of fam of interest
+fam.vec <- c( "Desulfatiglandaceae", "Desulfobacteraceae", "Desulfobulbaceae", "Desulfocapsaceae","Desulfosarcinaceae","Desulfovibrionaceae","Desulfuromonadaceae","Dethiosulfatibacteraceae","Sulfurimonadaceae","Sulfurovaceae","Thioalkalispiraceae","Thiomicrospiraceae")
+
+# subset rel.ps based on fam.vec
+DA.fam.ps <- subset_taxa(rel.ps, Family %in% fam.vec)  %>% 
+            filter_taxa( function(x) sum(x) > 0, TRUE)
+```  
+Then, I want to visualize this data in an nmds to determine whether sediment or plant origin drive microbiome assembly at the ASV level.  
+```{r, echo=TRUE, message=FALSE, results='hide'}
+# make ordination plots with weighted Bray-Curtis dissimilarity matrix 
+DAFam.ord.nmds.bray <- ordinate(DA.fam.ps,  method="NMDS", distance="bray", weighted=TRUE, trymax = 5000, strata=tank.id) 
+```  
+Checking BC ordination stats.   
+```{r}
+# check stress to make sure 2 dimensions are adequate
+  # (need more if stress ~ >.2)
+DAFam.ord.nmds.bray$stress # good
+  # 0.09832771
+
+# Shepards test of goodness of fit
+goodness(DAFam.ord.nmds.bray) 
+  # Lists test statistics of goodness of fit for each point
+
+stressplot(DAFam.ord.nmds.bray) # looks good
+  # Produces a Shepards diagram
+```   
+Plot ordination.  
+```{r}
+# create distinct color palette for populations
+colors.vec <- c("darkgoldenrod", "orchid4")
+
+# shapes for the two levels of PlantOrigin
+shapes.vec <- c(16, 21)  
+  # 16 for black dot & 21 for black dot with white fill
+
+DAFam.sig.label1 <- paste("Pop, p = 0.31")
+DAFam.sig.label2 <- paste("Sed, p = 0.00")
+DAFam.sig.label3 <- paste("PopxSed, p = 0.22")
+
+DAFam.nmds.plot <- plot_ordination(DA.fam.ps, DAFam.ord.nmds.bray, color="sed.origin", shape= "plant.origin") +
+  geom_point(aes(shape = plant.origin), size = 5, alpha=.7) + themes +
+  scale_fill_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  annotate("text", x = -.5, y = .9, label = "S Cyclers", size = 6) +
+  guides(shape = guide_legend(title = "Populatioin Origin"))+ 
+  theme(text = element_text(size = 20)) +
+  annotate("text", x = -0.5, y = .8, label = DAFam.sig.label1, size = 6) +
+  annotate("text", x = -0.5, y = .7 , label = DAFam.sig.label2, size = 6) +
+  annotate("text", x = -0.5, y = .6, label = DAFam.sig.label3, size = 6) +
+  annotate("text", x = 0.8, y = -.8, label = "stress = 0.10", size = 6)
+DAFam.nmds.plot
+```  
+Okay so with only the DA families related to sulfur processing, we do not see any difference in population so it's not those related to sulfur processing. Maybe it's taxa not associated with the sulfur cycle. Let's remove those DA taxa and re-run the nMDS.  
+
+Let's run a PERMANOVA to double check:  
+Running PERMANOVA.  
+```{r, message=FALSE}
+# create sample df of all treatments
+all.sample.df <- data.frame(sample_data(DA.fam.ps))
+
+# calculate bc dissimilarity matrix
+all.bc <- distance(DA.fam.ps, method = "bray") 
+
+# full model: plant.origin * sed.origin with tank.id as RF
+all.full.perm <-adonis2(all.bc~plant.origin*sed.origin, strata= all.sample.df$tank.id, data = all.sample.df)
+all.full.perm
+```  
+Okay so only sediment drives microbiome assembly when only ASVs from DA S cyclers are included.  
+# No S Cycling taxa on microbiome assembly, Fig. 5B:  
+```{r}
+# subset rel.ps excluding families in fam.vec
+DA.NoFam.ps <- subset_taxa(rel.ps, !(Family %in% fam.vec))  %>% 
+            filter_taxa( function(x) sum(x) > 0, TRUE)
+# make ordination plots with weighted Bray-Curtis dissimilarity matrix 
+DANoFam.ord.nmds.bray <- ordinate(DA.NoFam.ps,  method="NMDS", distance="bray", weighted=TRUE, trymax = 5000, strata=tank.id) 
+```  
+Checking BC ordination stats.  
+```{r}
+# check stress to make sure 2 dimensions are adequate
+  # (need more if stress ~ >.2)
+DANoFam.ord.nmds.bray$stress # good
+  # 0.1606387
+
+# Shepards test of goodness of fit
+goodness(DANoFam.ord.nmds.bray) 
+  # Lists test statistics of goodness of fit for each point
+
+stressplot(DANoFam.ord.nmds.bray) # looks good
+  # Produces a Shepards diagram
+```   
+Plot ordination.  
+```{r}
+# create distinct color palette for populations
+colors.vec <- c("darkgoldenrod", "orchid4")
+
+# shapes for the two levels of PlantOrigin
+shapes.vec <- c(16, 21)  
+
+allFam.sig.label1 <- paste("Pop, p = 0.02")
+allFam.sig.label2 <- paste("Sed, p = 0.00")
+allFam.sig.label3 <- paste("PopxSed, p = 0.60")
+
+# plot with colors for each treatment
+DANoFam.nmds.plot <- plot_ordination(DA.NoFam.ps, DANoFam.ord.nmds.bray, color="sed.origin", shape= "plant.origin") +
+  geom_point(aes(shape = plant.origin), size = 6, alpha=.7) + themes +
+  scale_fill_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  annotate("text", x = 0.5, y = 1.0, label = "No S Cyclers", size = 6) +
+  guides(shape = guide_legend(title = "Population Origin"))+ 
+  theme(text = element_text(size = 20)) +
+  annotate("text", x = 0.5, y = .9, label = allFam.sig.label1, size = 6) +
+  annotate("text", x = 0.5, y = .8 , label = allFam.sig.label2, size = 6) +
+  annotate("text", x = 0.5, y = .7, label = allFam.sig.label3, size = 6) +
+  annotate("text", x = 0.6, y = -.8, label = "stress = 0.10", size = 6)
+DANoFam.nmds.plot
+```  
+Okay so it looks like the differences between populations are driven by taxa not associated with the sulfur cycle.
+
+Let's run a PERMANOVA to double check.  
+```{r, message=FALSE}
+# create sample df of all treatments
+all.sample.df2 <- data.frame(sample_data(DA.NoFam.ps))
+
+# calculate bc dissimilarity matrix
+all.bc2 <- distance(DA.NoFam.ps, method = "bray") 
+
+# full model: plant.origin * sed.origin with tank.id as RF
+all.full.perm2 <-adonis2(all.bc2~plant.origin*sed.origin, strata= all.sample.df2$tank.id, data = all.sample.df2)
+all.full.perm2
+```  
+Plant and sediment drive differences in microbiome assembly in taxa outside of the sulfur cycling.
+
+# Pop distances between sediment origin, Fig C:  
+## Data manipulation:  
+Load in filtered relative abundance  ps object.  
+```{r}
+rel.ps <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/ps_rel.rds")
+```  
+Calculate BC dissimilarity matrix and isolate all rows corresponding to MP plants and all cols corresponding to MP plants.  
+```{r, echo=TRUE, message=FALSE, results='hide'}
+# calculate BC dissimilarity matrix
+all.bc <- as.matrix(distance(rel.ps, method = "bray"))
+
+# create vector of names to match rows
+  # these are all ids of MP plants
+row.names <- c("KZ.4a","KZ.7a","KZ.9a","KZ.15a","KZ.19a","KZ.20a","KZ.6a","KZ.8a","KZ.11a","KZ.12a","KZ.18a","KZ.23a")
+col.names <- c("KZ.4a","KZ.7a","KZ.9a","KZ.15a","KZ.19a","KZ.20a","KZ.6a","KZ.8a","KZ.11a","KZ.12a","KZ.18a","KZ.23a")
+
+# create new dissimilarity matrix with only matching rows
+subset.distances.bc <- all.bc[row.names, col.names]
+  # this is 1/4th of number of entries of original matrix
+  # so this works
+```  
+Now, we need to subset again based on mismatching sediment origin. Isolate all rows corresponding to BL sediment and columns based on MP sediment.  
+```{r}
+# sediment ids
+row.names2 <- c("KZ.4a","KZ.7a","KZ.9a","KZ.15a","KZ.19a","KZ.20a")
+col.names2 <- c("KZ.6a","KZ.8a","KZ.11a","KZ.12a","KZ.18a","KZ.23a")
+
+# create new dissimilarity matrix comparing sediment type
+subset.distances.MP <- subset.distances.bc[row.names2, col.names2]
+
+# isolate entries and create a new df
+mp.distances.df <- data.frame(as.vector((subset.distances.MP)))
+
+# create column names: distance, population
+names(mp.distances.df)[1] <- "distances"
+mp.distances.df <- mp.distances.df %>% mutate(population = "MILL")
+str(mp.distances.df) # looks good!
+```  
+Now, let's repeat this for BL.  
+
+Calculate BC dissimilarity matrix and isolate all rows corresponding to BL plants and all cols corresponding to BL plants.  
+```{r, echo=TRUE, message=FALSE, results='hide'}
+# calculate BC dissimilarity matrix
+all.bc <- as.matrix(distance(rel.ps, method = "bray"))
+
+# create vector of names to match rows
+  # these are all ids of MP plants
+row.names <- c("KZ.1a","KZ.3a","KZ.16a","KZ.22a","KZ.24a","KZ.25a","KZ.2a","KZ.5a","KZ.10a","KZ.14a","KZ.17a","KZ.21a")
+col.names <- c("KZ.1a","KZ.3a","KZ.16a","KZ.22a","KZ.24a","KZ.25a","KZ.2a","KZ.5a","KZ.10a","KZ.14a","KZ.17a","KZ.21a")
+
+# create new dissimilarity matrix with only matching rows
+subset.distances.bc <- all.bc[row.names, col.names]
+  # this is 1/4th of number of entries of original matrix
+  # so this works
+```  
+Now, we need to subset again based on mismatching sediment origin. Isolate all rows corresponding to BL sediment and columns based on MP sediment.  
+```{r}
+# sediment ids
+row.names2 <- c("KZ.1a","KZ.3a","KZ.16a","KZ.22a","KZ.24a","KZ.25a")
+col.names2 <- c("KZ.2a","KZ.5a","KZ.10a","KZ.14a","KZ.17a","KZ.21a")
+
+# create new dissimilarity matrix comparing sediment type
+subset.distances.BL <- subset.distances.bc[row.names2, col.names2]
+
+# isolate entries and create a new df
+bl.distances.df <- data.frame(as.vector((subset.distances.BL)))
+
+# create column names: distance, population
+names(bl.distances.df)[1] <- "distances"
+bl.distances.df <- bl.distances.df %>% mutate(population = "BLAK")
+str(bl.distances.df) # looks good!
+```  
+Now, let's stack the two dfs on top of each other and plot.  
+```{r}
+# merge dfs
+distances.df <- dplyr::bind_rows(bl.distances.df, mp.distances.df)
+
+# save as rds
+saveRDS(distances.df, file = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/distances.rds")
+
+distances.df <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/distances.rds")
+```  
+And plot:  
+```{r}
+# calculate stats for: period, genotype, treatment, family
+distances.sum <- summaryBy(distances ~ population, data=distances.df, FUN= fun)
+
+# create distinct color palette for populations
+colors.vec <- c("black", "white")
+
+# shapes for the two levels of PlantOrigin
+shapes.vec <- c(16, 21) 
+
+dist.sig.label1 <- expression("Pop, p = 6.72" %*% 10^-8)
+
+#plot
+distances.plot <- ggplot(distances.sum, aes(x=population, y=distances.m)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = distances.m + distances.se, ymin = distances.m - distances.se), width = 0, position = hdodge, color = "black") + 
+  geom_point( color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0)) + 
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("Bray-Curtis Pairwise Distance"), x= expression("Plant Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20)) + 
+  annotate("text", x = 1.9, y = 0.815, label = dist.sig.label1, size = 6, parse = TRUE)
+distances.plot
+```  
+Analysis:  
+```{r}
+# running model  
+dist.1way <- lm(distances ~ population, data=distances.df, na.action = na.exclude)
+plot(dist.1way)
+qqnorm(resid(dist.1way))
+hist(resid(dist.1way)) # normal
+summary(dist.1way) 
+Anova(dist.1way, type= 2) 
+```  
+There is a difference between these two distances where MP individuals are more similar to each other across sediment types than BL individuals. 
+
+
+# Group plot of nMDS and distances:  
+```{r}
+nmdsDistance.plot <- ggarrange(DAFam.nmds.plot, DANoFam.nmds.plot,distances.plot,
+                    labels = c("A.", "B.", "C."), ncol=3, nrow=1, common.legend = TRUE, legend="bottom")
+nmdsDistance.plot
+
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/nmds-distance.png", width=15, height =6, nmdsDistance.plot)
+```

@@ -1,0 +1,638 @@
+---
+title: "DAA"
+author: "Karolina Zabinski"
+date: "2024-07-02"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 60), root.dir ="~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment" )
+```  
+
+# Introduction:  
+This code is for the DAA between sediment treatments (SM Fig 4), and LMM of how S cycling families change across sediment and population origin (Fig. 5, SM Fig. 5, SM Fig. 6)
+
+# Setting up workspace:  
+Let's load in our libraries
+```{r, message = FALSE}
+library(dplyr) #manipulate df
+library(tidyverse)
+library(doBy)
+library(gridExtra)
+library(ggpubr)
+library(formatR)
+library(reshape2)
+library(tidyr)
+library(ggplot2)
+library(lme4)
+library(car)
+library(emmeans)
+library(gridExtra)
+library(cowplot)
+library(vegan)
+library(usethis)
+library(phyloseq)
+library(speedyseq)
+library(corncob)
+```  
+
+# General themes and equations  
+
+```{r, echo=TRUE, results='hide'}
+# set horizontal offset for points so they are easier to see
+hdodge <- position_dodge(width=0.1) 
+
+# set up theme:
+themes <-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+# loading in function
+fun <- function(x,...) {c(m=mean(x, na.rm=T), sd=sd(x,na.rm=T), n = length(x), se=sd(x,na.rm=T)/sqrt(length(x)))}
+
+# create distinct color palette for populations
+colors.vec <- c("black", "white")
+
+# shapes for the two levels of PlantOrigin
+shapes.vec <- c(16, 21)  
+  # 16 for black dot & 21 for black dot with white fill
+```  
+# Introduction:  
+Based on the NMDS and PERMANOVA, variation in community assembly is explained by differences at the ASV-level between treatments. Therefore, I will test for differential abundant ASVs between sediment type using beta-binomial regression models (Martin et al. 2019). Then, I will isolate those taxa and see how their relative abundance differs across populations.   
+
+# DAA between Sediment Origin:  
+Preparing data.  
+```{r}
+# load data
+all.ps <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/ps.no0.rds")
+```  
+Run model.  
+```{r}
+# set reference level to BL sediment
+sample_data(all.ps)$sed.origin <- relevel(as.factor(get_variable(all.ps, "sed.origin")), ref="BLAK")
+
+# sediment origin model
+set.seed(1)
+da_analysis.sed <- differentialTest(
+      formula = ~  sed.origin + plant.origin, # full model 
+      phi.formula = ~ 1, # no diff in disp b/w groups
+      formula_null = ~  plant.origin, # testing effect of sed
+      phi.formula_null = ~ 1, # specifying RF for dispersion
+      test = "Wald", boot = FALSE,
+      data = all.ps,
+      fdr_cutoff = 0.05)
+#  significant taxa
+summary(da_analysis.sed)
+  # 943 significant taxa
+
+# extract data and CI from plots
+all.efx<- plot(da_analysis.sed, data_only = TRUE, level = c("Order","Family", "Genus"))
+
+# Create a new column 'ASV' to store the text within parentheses
+all.efx$ASV <- sub(".*\\(([^)]+)\\).*", "\\1", all.efx$taxa)
+
+# Remove the text within parentheses from the 'taxa' column
+all.efx$taxa <- sub("\\s*\\(.*\\)", "", all.efx$taxa)
+
+# change underscores to spaces and commas
+all.efx$taxa2<- gsub("_", ", ", all.efx$taxa)
+
+# separate each taxonomic level into it's own col
+all.efx <- separate(all.efx, taxa, into = c("Order", "Family", "Genus"), sep = "_")
+all.efx$FamGen <- paste(all.efx$Family, all.efx$Genus)
+# save output
+saveRDS(all.efx,file= "~/Box Sync/GSE/GrainSizeExperiment/output/sed-DA-ASVs.rds")
+```  
+Plotting:  
+```{r}
+all.efx.plot <- ggplot(all.efx, aes(x = FamGen, y = x, fill = Family)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "dark grey") +
+  geom_errorbar(aes(ymax = xmax, ymin = xmin), width = 0, position = position_dodge(width = 0.2)) +
+  geom_point(shape = 21, size = 2.2, alpha = 0.7, position = position_dodge(width = 0.2)) +
+  scale_y_continuous(limits = c(-7, 7)) +
+  scale_x_discrete(limits = rev) + 
+  themes +  
+  #scale_fill_manual(values=fam.colors) +
+  theme(legend.position = "none") +
+  coord_flip() +
+  labs(x = "Microbial taxa", y = "Difference in log fold abundance") +
+  ggtitle("Differentially abundant taxa from BL to MP sediment") 
+all.efx.plot
+```  
+That's a lot of taxa! I am interested in S-cycling families because sulfur cyclers are hypothesized to be important to maintain in seagrasses for their health. So let's isoalte all sulfur cycling families known to associate with seagrasses + with their functions known/hypothesized. 
+
+Taxa and why:  
+Desulfobacteraceae: sulfate reducers (produce sulfide)  
+Colwelliaceae: associated with SWD (may not include for this study)  
+Desulfatiglandaceae: reduces sulfate into sulfide/strict anaerobe (not found in seagrass literture)  
+Desulfobacteraceae: sulfate reducer (produces sulfide)  
+Desulfobulbaceae: sulfate reducer 
+Desulfocapsaceae: sulfate reducer in anoxic sediments  
+Desulfosarcinaceae: sulfate reducer  
+Desulfovibrionaceae: strict anaerobe, sulfate reducer  
+Desulfuromonadaceae: sulfate reducer  
+Dethiosulfatibacteraceae: reduce thiosulfate and elemental sulfur to sulfide.  
+Ectothiorhodospiraceae: purple sulfur bacteria, but unclear if sulfate oxidizer or reducer so removing  
+Methylomonadaceae: methanotrophic in sulfide rich marine sediments, but won't keep in analysis because I'm focusing on sulfur pathway and this is more bac-bac interactions, and it was 1 ASV that was DA.
+Sulfurimonadaceae: sulfide oxidizer  
+Sulfurovaceae: oxidize elemental sulfur  
+Thioalkalispiraceae: sulfur oxidizing  
+Thiohalorhabdaceae: could be a sulfur oxidizer but not much is known on the taxa so removing from analysis.  
+Thiomicrospiraceae: sulfur oxidizing bacteria, but not written about in seagrass literature
+Thiotrichaceae: no information on putative function, presence/absence data in seagrass so removing.  
+```{r}
+# read rds
+all.efx <- readRDS("~/Box Sync/GSE/GrainSizeExperiment/output/sed-DA-ASVs.rds")
+
+# filter df
+efx.filtered <- filter(all.efx, Family %in% c( "Desulfatiglandaceae", "Desulfobacteraceae", "Desulfobulbaceae", "Desulfocapsaceae","Desulfosarcinaceae","Desulfovibrionaceae","Desulfuromonadaceae","Dethiosulfatibacteraceae","Sulfurimonadaceae","Sulfurovaceae","Thioalkalispiraceae","Thiomicrospiraceae"))
+```  
+About a third (334) of the DA ASVs (943) are associated with some kind of sulfur, methane, or nitrogen cycling in marine sediments.  
+First, I want to plot by the family-genus combination name and color by order.  
+```{r}
+filtered.famgen.efx.plot <- ggplot(efx.filtered, aes(x = FamGen, y = x, fill = Order)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "dark grey") +
+  geom_errorbar(aes(ymax = xmax, ymin = xmin), width = 0, position = position_dodge(width = 0.2)) +
+  geom_point(shape = 21, size = 2.2, alpha = 0.7, position = position_dodge(width = 0.2)) +
+  scale_y_continuous(limits = c(-7, 7)) +
+  scale_x_discrete(limits = rev) + 
+  themes +  
+  #scale_fill_manual(values=fam.colors) +
+  theme(legend.position = "none") +
+  coord_flip() +
+  labs(x = "Microbial taxa", y = "Difference in log fold abundance") +
+  ggtitle("Differentially abundant taxa from BL to MP sediment") 
+filtered.famgen.efx.plot
+```  
+# SM Fig 4 DA S Cyclers:  
+Now, I want to plot only the differentially abundant taxa that are S cyclers, but color all S oxidizers white and reducers black.  
+
+```{r}
+# read rds
+all.efx <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/sed-DA-ASVs.rds")
+
+# filter df
+efx.filtered <- filter(all.efx, Family %in% c( "Desulfatiglandaceae", "Desulfobacteraceae", "Desulfobulbaceae", "Desulfocapsaceae","Desulfosarcinaceae","Desulfovibrionaceae","Desulfuromonadaceae","Dethiosulfatibacteraceae","Sulfurimonadaceae","Sulfurovaceae","Thioalkalispiraceae","Thiomicrospiraceae"))
+
+# vector of only S reduction
+s.red.vec <- c("Sulfurimonadaceae","Sulfurovaceae","Thioalkalispiraceae","Thiomicrospiraceae")
+
+# create new category labeling oxidizers and reducers
+efx.filtered$category <- ifelse(efx.filtered$Family %in% s.red.vec, "S Reducer", "S Oxidizer")
+  
+# create colors vec
+colors.vec <- c("white", "black")
+
+annotated.efx.plot <- ggplot(efx.filtered, aes(x = Family, y = x, fill = category)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "dark grey") +
+  geom_errorbar(aes(ymax = xmax, ymin = xmin), width = 0, position = position_dodge(width = 0.2)) +
+  geom_point(shape = 21, size = 6, alpha = 0.7, position = position_dodge(width = 0)) +
+  scale_y_continuous(limits = c(-7, 7)) +
+  scale_x_discrete(limits = rev) + 
+  themes +  
+  scale_fill_manual(values=colors.vec) +
+  coord_flip() +
+  labs(x = "Microbial taxa", y = "Difference in log fold abundance") +
+  theme(legend.position = "bottom", plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20))
+annotated.efx.plot
+
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/microbe-figures/DAASV-sediment-annotated.png", width=7, height =10, annotated.efx.plot)
+```
+
+Now, I know what families to isolate and visualize across populations.  
+
+# SM Fig 6 & Fig 5, Isolated DA families by population:
+Now that I know which families are of interest, I want to visualize how the relative abundance of ASVs within each of those families varies across population. This is because when I ran the NMDS plot, I saw that the variation between populations is lost when you explore at higher taxonomic levels (family versus ASV).  
+
+I will only be exploring the families of interest from the DAA conducted at the family level.  
+
+Load in rel.ps and subset taxa to just families of interest.  
+```{r}
+# load data
+rel.ps <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/ps_rel.rds")
+
+# create vec of fam of interest
+fam.vec <- c( "Desulfatiglandaceae", "Desulfobacteraceae", "Desulfobulbaceae", "Desulfocapsaceae","Desulfosarcinaceae","Desulfovibrionaceae","Desulfuromonadaceae","Dethiosulfatibacteraceae","Sulfurimonadaceae","Sulfurovaceae","Thioalkalispiraceae","Thiomicrospiraceae")
+
+# subset rel.ps based on fam.vec
+DA.fam.ps <- subset_taxa(rel.ps, Family %in% fam.vec)  %>% 
+            tax_glom(taxrank = 'Family') %>%
+            filter_taxa( function(x) sum(x) > 0, TRUE)
+```  
+Manipulate ps into df for plotting.  
+```{r}
+# create dataframe from phyloseq object
+DA.fam.df <- psmelt(DA.fam.ps)
+
+# convert Family to a character vector from a factor to prevent R errors
+DA.fam.df$Family <- as.character(DA.fam.df$Family)
+```  
+For each family, calculate summary statistics across treatments for each ASV.   
+
+Summary statistics.  
+```{r}
+# calculate summary stats
+DA.fam.sum <- summaryBy(Abundance ~ plant.origin + sed.origin + Family, data=DA.fam.df, FUN= fun)
+
+# Create a data frame with labels for each facet
+facet_labels <- data.frame(
+  Family = unique(DA.fam.sum$Family),
+  label = c("Pop, p = 0.28\nSed, p = 0.01\nPopxSed, p = 0.37",
+            "Pop, p = 0.46\nSed, p = 0.00\nPopxSed, p = 0.74", 
+            "Pop, p = 0.38\nSed, p = 0.31\nPopxSed, p = 0.67", 
+            "Pop, p = 0.58\nSed, p = 0.00\nPopxSed, p = 0.20",
+            "Pop, p = 0.68\nSed, p = 0.88\nPopxSed, p = 0.53",
+            "Pop, p = 0.29\nSed, p = 0.00\nPopxSed, p = 0.25", 
+            "Pop, p = 0.74\nSed, p = 0.01\nPopxSed, p = 0.22", 
+            "Pop, p = 0.23\nSed, p = 0.00\nPopxSed, p = 0.12",
+            "Pop, p = 0.12\nSed, p = 0.03\nPopxSed, p = 0.71", 
+            "Pop, p = 0.41\nSed, p = 0.06\nPopxSed, p = 0.85", 
+            "Pop, p = 0.21\nSed, p = 0.08\nPopxSed, p = 0.18", 
+            "Pop, p = 0.73\nSed, p = 0.00\nPopxSed, p = 0.50"),
+  x = c(1,2,2,2,2,2,1,2,1,1,1,2),
+  y = c(Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf)
+)
+
+# Merge the labels with the summary data
+DA.fam.sum <- merge(DA.fam.sum, facet_labels, by = "Family")
+
+# Plot with annotations
+DA.fam.plot <- ggplot(DA.fam.sum, aes(x = sed.origin, y = Abundance.m, group = plant.origin, color = plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Abundance.m + Abundance.se, ymin = Abundance.m - Abundance.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("Relative Abundance"), x = expression("Sediment Origin")) +
+  theme(legend.position = "bottom", plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 19.5)) +
+  facet_wrap(~Family, scales = "free_y") +
+  geom_text(aes(label = label, x = x, y = y, vjust = 1.2), size = 3, color = "black")
+DA.fam.plot
+
+ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/microbe-figures/root-DATaxa.png", width=13.5, height =8, DA.fam.plot)
+```
+It is most likely at the ASV level that there are differences in population performance.  
+
+Now, visualizing top two most abundant oxidizers and reducers:  
+```{r}
+# create vec of facets to extract
+facets.vec <- c("Sulfurimonadaceae","Thiomicrospiraceae", "Desulfobacteraceae", "Desulfobulbaceae")
+
+# filter facets
+filtered.df <- DA.fam.sum %>%
+  filter(Family %in% facets.vec)
+
+# reorder family levels
+filtered.df$Family <- factor(filtered.df$Family, levels = facets.vec)
+
+# Plot with annotations
+topDA.fam.plot <- ggplot(filtered.df, aes(x = sed.origin, y = Abundance.m, group = plant.origin, color = plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Abundance.m + Abundance.se, ymin = Abundance.m - Abundance.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  themes + 
+  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  labs(y = expression("Relative Abundance"), x = expression("Sediment Origin")) +
+  theme(legend.position = "bottom", plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 19.5)) +
+  facet_wrap(~Family, scales = "free_y") +
+  geom_text(aes(label = label, x = x, y = y, vjust = 1.2), size = 3, color = "black")
+topDA.fam.plot
+
+ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/microbe-figures/root-top-DATaxa.png", width=7.2, height =8, topDA.fam.plot)
+```
+
+
+# LMM on each s cycler across treatment and population:  
+Need to run a separate model selection for each family.  
+For Desulfatiglandaceae.  
+```{r}
+# isolate family
+desulfatiglandaceae.df <- DA.fam.df %>% filter(Family == "Desulfatiglandaceae")
+
+# 2 way
+desulfatiglandaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=desulfatiglandaceae.df, na.action = na.exclude)
+# 1 way
+desulfatiglandaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=desulfatiglandaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(desulfatiglandaceae.2way, desulfatiglandaceae.1way) # p= 0.3701, drop
+desulfatiglandaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=desulfatiglandaceae.df, na.action = na.exclude)
+plot(desulfatiglandaceae.full)
+qqnorm(resid(desulfatiglandaceae.full))
+hist(resid(desulfatiglandaceae.full))
+summary(desulfatiglandaceae.full) 
+Anova(desulfatiglandaceae.full)
+```
+For Desulfobacteraceae  
+```{r}
+# isolate family
+Desulfobacteraceae.df <- DA.fam.df %>% filter(Family == "Desulfobacteraceae")
+
+# 2 way
+Desulfobacteraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfobacteraceae.df, na.action = na.exclude)
+# 1 way
+Desulfobacteraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobacteraceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Desulfobacteraceae.2way, Desulfobacteraceae.1way) # p= 0.7357, drop
+Desulfobacteraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobacteraceae.df, na.action = na.exclude)
+plot(Desulfobacteraceae.full)
+qqnorm(resid(Desulfobacteraceae.full))
+hist(resid(Desulfobacteraceae.full))
+summary(Desulfobacteraceae.full) 
+Anova(Desulfobacteraceae.full)
+```
+For Desulfobulbaceae  
+```{r}
+# isolate family
+Desulfobulbaceae.df <- DA.fam.df %>% filter(Family == "Desulfobulbaceae")
+
+# 2 way
+Desulfobulbaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfobulbaceae.df, na.action = na.exclude)
+# 1 way
+Desulfobulbaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobulbaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Desulfobulbaceae.2way, Desulfobulbaceae.1way) # p= 0.6651, drop
+Desulfobulbaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobulbaceae.df, na.action = na.exclude)
+plot(Desulfobulbaceae.full)
+qqnorm(resid(Desulfobulbaceae.full))
+hist(resid(Desulfobulbaceae.full))
+summary(Desulfobulbaceae.full) 
+Anova(Desulfobulbaceae.full)
+```
+For Desulfocapsaceae  
+```{r}
+# isolate family
+Desulfocapsaceae.df <- DA.fam.df %>% filter(Family == "Desulfocapsaceae")
+
+# 2 way
+Desulfocapsaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfocapsaceae.df, na.action = na.exclude)
+# 1 way
+Desulfocapsaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfocapsaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Desulfocapsaceae.2way, Desulfocapsaceae.1way) # p= 0.198, drop
+Desulfocapsaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfocapsaceae.df, na.action = na.exclude)
+plot(Desulfocapsaceae.full)
+qqnorm(resid(Desulfocapsaceae.full))
+hist(resid(Desulfocapsaceae.full))
+summary(Desulfocapsaceae.full) 
+Anova(Desulfocapsaceae.full)
+```
+For Desulfosarcinaceae  
+```{r}
+# isolate family
+Desulfosarcinaceae.df <- DA.fam.df %>% filter(Family == "Desulfosarcinaceae")
+
+# 2 way
+Desulfosarcinaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfosarcinaceae.df, na.action = na.exclude)
+# 1 way
+Desulfosarcinaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfosarcinaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Desulfosarcinaceae.2way, Desulfosarcinaceae.1way) # p= 0.198, drop
+Desulfosarcinaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfosarcinaceae.df, na.action = na.exclude)
+plot(Desulfosarcinaceae.full)
+qqnorm(resid(Desulfosarcinaceae.full))
+hist(resid(Desulfosarcinaceae.full))
+summary(Desulfosarcinaceae.full) 
+Anova(Desulfosarcinaceae.full)
+```
+For Desulfovibrionaceae  
+```{r}
+# isolate family
+Desulfovibrionaceae.df <- DA.fam.df %>% filter(Family == "Desulfovibrionaceae")
+
+# 2 way
+Desulfovibrionaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfovibrionaceae.df, na.action = na.exclude)
+# 1 way
+Desulfovibrionaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfovibrionaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Desulfovibrionaceae.2way, Desulfovibrionaceae.1way) # p= 0.2489, drop
+Desulfovibrionaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfovibrionaceae.df, na.action = na.exclude)
+plot(Desulfovibrionaceae.full)
+qqnorm(resid(Desulfovibrionaceae.full))
+hist(resid(Desulfovibrionaceae.full))
+summary(Desulfovibrionaceae.full) 
+Anova(Desulfovibrionaceae.full)
+```
+For Desulfuromonadaceae  
+```{r}
+# isolate family
+Desulfuromonadaceae.df <- DA.fam.df %>% filter(Family == "Desulfuromonadaceae")
+
+# 2 way
+Desulfuromonadaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfuromonadaceae.df, na.action = na.exclude)
+# 1 way
+Desulfuromonadaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfuromonadaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Desulfuromonadaceae.2way, Desulfuromonadaceae.1way) # p= 0.2181, drop
+Desulfuromonadaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfuromonadaceae.df, na.action = na.exclude)
+plot(Desulfuromonadaceae.full)
+qqnorm(resid(Desulfuromonadaceae.full))
+hist(resid(Desulfuromonadaceae.full))
+summary(Desulfuromonadaceae.full) 
+Anova(Desulfuromonadaceae.full)
+```
+For Dethiosulfatibacteraceae  
+```{r}
+# isolate family
+Dethiosulfatibacteraceae.df <- DA.fam.df %>% filter(Family == "Dethiosulfatibacteraceae")
+
+# 2 way
+Dethiosulfatibacteraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Dethiosulfatibacteraceae.df, na.action = na.exclude)
+# 1 way
+Dethiosulfatibacteraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Dethiosulfatibacteraceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Dethiosulfatibacteraceae.2way, Dethiosulfatibacteraceae.1way) # p= 0.1192, drop
+Dethiosulfatibacteraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Dethiosulfatibacteraceae.df, na.action = na.exclude)
+plot(Dethiosulfatibacteraceae.full)
+qqnorm(resid(Dethiosulfatibacteraceae.full))
+hist(resid(Dethiosulfatibacteraceae.full))
+summary(Dethiosulfatibacteraceae.full) 
+Anova(Dethiosulfatibacteraceae.full)
+```
+For Sulfurimonadaceae  
+```{r}
+# isolate family
+Sulfurimonadaceae.df <- DA.fam.df %>% filter(Family == "Sulfurimonadaceae")
+
+# 2 way
+Sulfurimonadaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Sulfurimonadaceae.df, na.action = na.exclude)
+# 1 way
+Sulfurimonadaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurimonadaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Sulfurimonadaceae.2way, Sulfurimonadaceae.1way) # p= 0.7101, drop
+Sulfurimonadaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurimonadaceae.df, na.action = na.exclude)
+plot(Sulfurimonadaceae.full)
+qqnorm(resid(Sulfurimonadaceae.full))
+hist(resid(Sulfurimonadaceae.full))
+summary(Sulfurimonadaceae.full) 
+Anova(Sulfurimonadaceae.full)
+```
+For Sulfurovaceae  
+```{r}
+# isolate family
+Sulfurovaceae.df <- DA.fam.df %>% filter(Family == "Sulfurovaceae")
+
+# 2 way
+Sulfurovaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Sulfurovaceae.df, na.action = na.exclude)
+# 1 way
+Sulfurovaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurovaceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Sulfurovaceae.2way, Sulfurovaceae.1way) # p= 0.8548, drop
+Sulfurovaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurovaceae.df, na.action = na.exclude)
+plot(Sulfurovaceae.full)
+qqnorm(resid(Sulfurovaceae.full))
+hist(resid(Sulfurovaceae.full))
+summary(Sulfurovaceae.full) 
+Anova(Sulfurovaceae.full)
+```
+For Thioalkalispiraceae  
+```{r}
+# isolate family
+Thioalkalispiraceae.df <- DA.fam.df %>% filter(Family == "Thioalkalispiraceae")
+
+# 2 way
+Thioalkalispiraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Thioalkalispiraceae.df, na.action = na.exclude)
+# 1 way
+Thioalkalispiraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thioalkalispiraceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Thioalkalispiraceae.2way, Thioalkalispiraceae.1way) # p= 0.1831, drop
+Thioalkalispiraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thioalkalispiraceae.df, na.action = na.exclude)
+plot(Thioalkalispiraceae.full)
+qqnorm(resid(Thioalkalispiraceae.full))
+hist(resid(Thioalkalispiraceae.full))
+summary(Thioalkalispiraceae.full) 
+Anova(Thioalkalispiraceae.full)
+```  
+For Thiomicrospiraceae  
+```{r}
+# isolate family
+Thiomicrospiraceae.df <- DA.fam.df %>% filter(Family == "Thiomicrospiraceae")
+
+# 2 way
+Thiomicrospiraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Thiomicrospiraceae.df, na.action = na.exclude)
+# 1 way
+Thiomicrospiraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thiomicrospiraceae.df, na.action = na.exclude)
+#see if 2way can drop
+anova(Thiomicrospiraceae.2way, Thiomicrospiraceae.1way) # p= 0.4999, drop
+Thiomicrospiraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thiomicrospiraceae.df, na.action = na.exclude)
+plot(Thiomicrospiraceae.full)
+qqnorm(resid(Thiomicrospiraceae.full))
+hist(resid(Thiomicrospiraceae.full))
+summary(Thiomicrospiraceae.full) 
+Anova(Thiomicrospiraceae.full)
+```
+
+# SM Fig 5, Sulfur Oxidizers and Reducers across treatments:  
+Now, I want to lump all sulfur oxidizers into one category and reducers as another category. Then I want to visualize their relative abundances across treatments.  
+Load in relative abundance and add category for sulfur oxiders and reducers to their respective families.  
+```{r}
+# load data
+rel.ps <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/ps_rel.rds")
+
+# create vec of fam of interest
+fam.vec <- c( "Desulfatiglandaceae", "Desulfobacteraceae", "Desulfobulbaceae", "Desulfocapsaceae","Desulfosarcinaceae","Desulfovibrionaceae","Desulfuromonadaceae","Dethiosulfatibacteraceae","Sulfurimonadaceae","Sulfurovaceae","Thioalkalispiraceae","Thiomicrospiraceae")
+
+# subset rel.ps based on fam.vec
+DA.fam.ps <- subset_taxa(rel.ps, Family %in% fam.vec)  %>% 
+            tax_glom(taxrank = 'Family') %>%
+            filter_taxa( function(x) sum(x) > 0, TRUE)
+```  
+Manipulate ps into df for plotting.  
+```{r}
+# create dataframe from phyloseq object
+DA.fam.df <- psmelt(DA.fam.ps)
+
+# convert Family to a character vector from a factor to prevent R errors
+DA.fam.df$Family <- as.character(DA.fam.df$Family)
+
+# create string of families that are sulfur reducers
+sreduct.vec <- c( "Desulfatiglandaceae", "Desulfobacteraceae", "Desulfobulbaceae", "Desulfocapsaceae","Desulfosarcinaceae","Desulfovibrionaceae","Desulfuromonadaceae","Dethiosulfatibacteraceae")
+
+# create new column called category
+# if Family in sreduct place Reducers in category
+# else place Oxidizers in category
+DA.fam.df$category <- ifelse(DA.fam.df$Family %in% sreduct.vec, "Reducers", "Oxidizers")
+```   
+Now, find the summary stats for each category and visualize together faceted by category.  
+```{r}
+# calculate summary stats
+DA.cat.sum <- summaryBy(Abundance ~ plant.origin + sed.origin + category, data=DA.fam.df, FUN= fun)
+
+# Create a data frame with labels for each facet
+facet_labels <- data.frame(
+  category = unique(DA.cat.sum$category),
+  label = c("Pop, p = 0.59\nSed, p = 0.00\nPopxSed, p = 0.80", "Pop, p = 0.41\nSed, p = 0.63\nPopxSed, p = 0.96"),
+  x = c(1,2),
+  y = c(Inf, Inf)
+)
+
+# Merge the labels with the summary data
+DA.cat.sum <- merge(DA.cat.sum, facet_labels, by = "category")
+
+# plot
+DA.cat.plot <- ggplot(DA.cat.sum, aes(x=sed.origin, y=Abundance.m, group=plant.origin, color=plant.origin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = Abundance.m + Abundance.se, ymin = Abundance.m - Abundance.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("COARSE","FINE")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  themes + 
+  scale_x_discrete(labels= c("COARSE","FINE")) +
+  labs(y = expression("Relative Abundance"), x= expression("Sediment Origin")) +
+  theme( legend.position = "bottom",plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 19.5)) +
+  facet_wrap(~category, scales = "free_y") +
+  geom_text(aes(label = label, x = x, y = y, vjust = 1.2), size = 6, color = "black")
+DA.cat.plot
+
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/microbe-figures/root-DATaxa-category.png", width=11, height =8, DA.cat.plot)
+```
+
+# Run stats on categories of S cyclers: 
+
+For the reducers  
+```{r}
+# isolate family
+reducers.df <- DA.fam.df %>% filter(category == "Reducers") 
+
+# 2 way
+reducers.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=reducers.df, na.action = na.exclude)
+# 1 way
+reducers.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=reducers.df, na.action = na.exclude)
+#see if 2way can drop
+anova(reducers.2way, reducers.1way) # p= 0.8031, drop
+reducers.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=reducers.df, na.action = na.exclude)
+plot(reducers.full)
+qqnorm(resid(reducers.full))
+hist(resid(reducers.full))
+summary(reducers.full) 
+Anova(reducers.full)
+```  
+For the oxidizers  
+```{r}
+# isolate family
+oxidizers.df <- DA.fam.df %>% filter(category == "Oxidizers") 
+
+# 2 way
+oxidizers.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=oxidizers.df, na.action = na.exclude)
+# 1 way
+oxidizers.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=oxidizers.df, na.action = na.exclude)
+#see if 2way can drop
+anova(oxidizers.2way, oxidizers.1way) # p= 0.9617, drop
+oxidizers.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=oxidizers.df, na.action = na.exclude)
+plot(oxidizers.full)
+qqnorm(resid(oxidizers.full))
+hist(resid(oxidizers.full))
+summary(oxidizers.full) 
+Anova(oxidizers.full)
+```
