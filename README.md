@@ -16,11 +16,12 @@
 7.	Synthesis: These results support that sediment partially mediates home site advantage in eelgrass populations and suggest differential population responses may be mediated by the associated microbial community.
 
 # Notes on Scripts:  
-1. GSE-preprocessing.r : running DADA2 pipeline and preparing phyloseq object for downstream analyses
-2. plant-responses-&-analyses.rmd : analyses and figures corresponding to 1-3, S1-2
-3. community-&-distances-analyses.rmd : analyses and figures corresponding to 4A-C
-4. alpha-diversity-beta-dispersion-analyses-&-figures.rmd : analyses and figures corresponding to Fig. 2B and S5A-D
-5. DAA-figures-&-analyses.rmd : analyses and figures corresponding to Fig. 5 and S4-6
+1. General note: Working directories are set at the start of each .RMD or .R. All downstream paths are relative to that set working directory.
+2. GSE-preprocessing.r : running DADA2 pipeline and preparing phyloseq object for downstream analyses
+3. plant-responses-&-analyses.rmd : analyses and figures corresponding to 1-3, S1-2
+4. community-&-distances-analyses.rmd : analyses and figures corresponding to 4A-C
+5. alpha-diversity-beta-dispersion-analyses-&-figures.rmd : analyses and figures corresponding to Fig. 2B and S5A-D
+6. DAA-figures-&-analyses.rmd : analyses and figures corresponding to Fig. 5 and S4-6
 
 # Notes on Program Version:  
 1. R: 4.4.1
