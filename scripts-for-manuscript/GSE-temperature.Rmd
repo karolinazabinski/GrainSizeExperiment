@@ -1,0 +1,116 @@
+---
+title: "GSE-temperature"
+author: "Karolina Zabinski"
+date: "2024-07-01"
+output: pdf_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 60), root.dir ="~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment" )
+``` 
+
+# Setting up workspace  
+Loading in libraries.  
+```{r, tidy=TRUE, message = FALSE}
+# libraries needed for data manipulation
+library(dplyr)
+library(tidyverse)
+# loading packages needed for data analysis
+library(nlme) 
+library(lme4)
+library(doBy) # creates summary tables
+library(MuMIn)
+library(visreg)
+library(car) # has Anova() function
+library(emmeans)
+# and visualization
+library(ggplot2)
+library(gridExtra)
+library(ggpubr)
+library(cowplot)
+library(lubridate) # manipulate dates logger data
+```  
+Loading in csvs   
+```{r}
+# raw tank 8
+raw.8 <- read.csv("/Users/carolinezabinski/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/data/Temp_Tank8.csv",  header=T, dec=".")
+
+# raw tank 9
+raw.9 <- read.csv("/Users/carolinezabinski/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/data/Temp_Tank9.csv",  header=T, dec=".")
+```  
+
+# Cleaning data:    
+## Cleaning raw 8:  
+```{r}
+# structure
+str(raw.8)
+# mutate new col for date and time 
+raw.8 <- raw.8 %>%
+  mutate(Date.Time = lubridate::mdy_hm(Date.Time..GMT.07.00))
+str(raw.8) # looks good
+
+# mutate new col for date
+raw.8 <- raw.8 %>%
+  mutate(Date = lubridate::date(Date.Time))
+str(raw.8)
+
+# mutate col for tank, rename temp col, select temp:tank
+clean.8 <- raw.8 %>%
+  mutate(Temp.C = Temp...C..LGR.S.N..10649822..SEN.S.N..10649822..LBL..Temp.,
+         Tank = as.factor("8")) %>%
+  select(Temp.C, Tank, Date)
+str(clean.8) # looks good
+```  
+## Cleaning raw 9:  
+```{r}
+# structure
+str(raw.9)
+# mutate new col for date and time 
+raw.9 <- raw.9 %>%
+  mutate(Date.Time = lubridate::mdy_hm(Date.Time..GMT.07.00))
+str(raw.9) # looks good
+
+# mutate new col for date
+raw.9 <- raw.9 %>%
+  mutate(Date = lubridate::date(Date.Time))
+str(raw.9)
+
+# mutate col for tank, rename temp col, select temp:tank
+clean.9 <- raw.9 %>%
+  mutate(Temp.C = Temp...C..LGR.S.N..10355106..SEN.S.N..10355106.,
+         Tank = as.factor("9")) %>%
+  select(Temp.C, Tank, Date)
+str(clean.9) # looks good
+``` 
+## Merging clean 8 and clean 9:  
+```{r}
+# merging dfs
+cleaned.temp <- rbind(clean.8, clean.9)
+str(cleaned.temp) # looks good
+saveRDS(cleaned.temp, file= "/Users/carolinezabinski/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/temperature-data.rds")
+
+# load in df as test
+all.temp <- readRDS("/Users/carolinezabinski/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/temperature-data.rds") # looks good
+```
+
+# Average daily temperatures:  
+Calculate average daily temperature +/- standard error.  
+```{r}
+# load all temp
+all.temp <- readRDS("/Users/carolinezabinski/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/temperature-data.rds") 
+
+# calculate mean temperature by site and long date
+mean.temp <- all.temp %>% 
+  group_by(Date) %>%
+  summarize(Temp.mean = mean(Temp.C, na.rm = TRUE)) %>% # Use summarize to aggregate the data
+  ungroup()
+
+# loading in function
+fun <- function(x,...) {c(m=mean(x, na.rm=T), sd=sd(x,na.rm=T), n = length(x), se=sd(x,na.rm=T)/sqrt(length(x)))}
+
+# calculate mean temp & standard error across all dates
+allTemps.mean <- summaryBy(Temp.mean ~ 1, data=mean.temp, FUN=fun) # looks good
+```  
+
+
+
