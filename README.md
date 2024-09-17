@@ -22,6 +22,7 @@
 4. community-&-distances-analyses.rmd : analyses and figures corresponding to 4A-C
 5. alpha-diversity-beta-dispersion-analyses-&-figures.rmd : analyses and figures corresponding to Fig. 2B and S5A-D
 6. DAA-figures-&-analyses.rmd : analyses and figures corresponding to Fig. 5 and S4-6
+7. GSE-temperature.rmd : analyses of logger data to caluclate temperature means
 
 # Notes on Program Version:  
 1. R: 4.4.1
