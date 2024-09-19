@@ -36,4 +36,5 @@
 6. lme4 (1.1.35.5), car(3.1.2), emmeans(1.10.3) for linear mixed model analyses
 7. phyloseq (1.48.0), speedyseq (0.5.3.9021) for manipulation of microbiome (16s rRNA amplicon) dataset
 8. corncob (0.4.1) for differential abundance tests of microbiome data
+9. lubridate (1.9.3) manipulate time series data/logger data
 
