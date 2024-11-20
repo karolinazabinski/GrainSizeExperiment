@@ -31,6 +31,7 @@ library(vegan)
 library(usethis)
 library(phyloseq)
 library(speedyseq)
+library(permute)
 ```  
 # General themes and equations:   
 ```{r, echo=TRUE, results='hide'}
@@ -86,37 +87,58 @@ shapes.vec <- c(16, 21)
 
 DAFam.sig.label1 <- paste("Pop, p = 0.31")
 DAFam.sig.label2 <- paste("Sed, p = 0.00")
-DAFam.sig.label3 <- paste("PopxSed, p = 0.22")
 
 DAFam.nmds.plot <- plot_ordination(DA.fam.ps, DAFam.ord.nmds.bray, color="sed.origin", shape= "plant.origin") +
   geom_point(aes(shape = plant.origin), size = 5, alpha=.7) + themes +
-  scale_fill_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE", "FINE")) +
-  scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("COARSE", "FINE")) +  # Set shapes manually
-  scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_fill_manual(name = "Sediment Origin", values = colors.vec, labels= c("Blake's\nLanding", "Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("Blake's\nLanding", "Millerton\nPoint")) +
   annotate("text", x = -.5, y = .9, label = "S Cyclers", size = 6) +
   guides(shape = guide_legend(title = "Populatioin Origin"))+ 
   theme(text = element_text(size = 20)) +
   annotate("text", x = -0.5, y = .8, label = DAFam.sig.label1, size = 6) +
   annotate("text", x = -0.5, y = .7 , label = DAFam.sig.label2, size = 6) +
-  annotate("text", x = -0.5, y = .6, label = DAFam.sig.label3, size = 6) +
   annotate("text", x = 0.8, y = -.8, label = "stress = 0.10", size = 6)
 DAFam.nmds.plot
 ```  
 Okay so with only the DA families related to sulfur processing, we do not see any difference in population so it's not those related to sulfur processing. Maybe it's taxa not associated with the sulfur cycle. Let's remove those DA taxa and re-run the nMDS.  
 
-Let's run a PERMANOVA to double check:  
-Running PERMANOVA.  
-```{r, message=FALSE}
+Let's run a dbRDA which takes into account randome effects to double check.  
+```{r}
 # create sample df of all treatments
 all.sample.df <- data.frame(sample_data(DA.fam.ps))
 
-# calculate bc dissimilarity matrix
-all.bc <- distance(DA.fam.ps, method = "bray") 
+# create response df of relative abundances
+DA.fam.responses.df <- data.frame(otu_table(DA.fam.ps))
 
-# full model: plant.origin * sed.origin with tank.id as RF
-all.full.perm <-adonis2(all.bc~plant.origin*sed.origin, strata= all.sample.df$tank.id, data = all.sample.df)
-all.full.perm
-```  
+# set up permutation structure that restricts permutations within each tank (random effects)
+DA.fam.perm.schem <- how(nperm=999, blocks = all.sample.df$tank.id)
+
+# Setting up dbrda. Avoiding negative eigenvalues with sqrt distances
+mod.DA.fam <- dbrda(DA.fam.responses.df ~ plant.origin*sed.origin + plant.origin + sed.origin + Condition(tank.id), all.sample.df, dist="bray", sqrt.dist = TRUE)
+
+# running anova
+anova(mod.DA.fam, permutations= DA.fam.perm.schem, by = "margin")
+  # two-way interaction is not significant, dropping
+
+mod.DA.fam <- dbrda(DA.fam.responses.df ~ plant.origin + sed.origin + Condition(tank.id), all.sample.df, dist="bray", sqrt.dist = TRUE)
+
+# running anova
+anova(mod.DA.fam, permutations= DA.fam.perm.schem, by = "margin")
+  # just sediment is significant
+
+# Get adjusted R^2 for the overall model
+RsquareAdj(mod.DA.fam)
+
+# Calculating total SumOfSquares
+total_SS <- sum(c(0.3000, 1.6827, 4.1513))
+
+# Caluclate R^2 for each term
+r2.plant <- 0.300/total_SS
+  # 0.0489077
+r2.sed <- 1.6827/total_SS
+  # 0.2743234
+```
 Okay so only sediment drives microbiome assembly when only ASVs from DA S cyclers are included.  
 # No S Cycling taxa on microbiome assembly, Fig. 5B:  
 ```{r}
@@ -148,40 +170,59 @@ colors.vec <- c("darkgoldenrod", "orchid4")
 # shapes for the two levels of PlantOrigin
 shapes.vec <- c(16, 21)  
 
-allFam.sig.label1 <- paste("Pop, p = 0.02")
+allFam.sig.label1 <- paste("Pop, p = 0.01")
 allFam.sig.label2 <- paste("Sed, p = 0.00")
-allFam.sig.label3 <- paste("PopxSed, p = 0.60")
 
 # plot with colors for each treatment
 DANoFam.nmds.plot <- plot_ordination(DA.NoFam.ps, DANoFam.ord.nmds.bray, color="sed.origin", shape= "plant.origin") +
   geom_point(aes(shape = plant.origin), size = 6, alpha=.7) + themes +
-  scale_fill_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE","FINE")) +
-  scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("COARSE","FINE")) +  # Set shapes manually
-  scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_fill_manual(name = "Sediment Origin", values = colors.vec, labels= c("Blake's\nLanding","Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("Blake's\nLanding","Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("Blake's\nLanding","Millerton\nPoint")) +
   annotate("text", x = 0.5, y = 1.0, label = "No S Cyclers", size = 6) +
   guides(shape = guide_legend(title = "Population Origin"))+ 
   theme(text = element_text(size = 20)) +
   annotate("text", x = 0.5, y = .9, label = allFam.sig.label1, size = 6) +
   annotate("text", x = 0.5, y = .8 , label = allFam.sig.label2, size = 6) +
-  annotate("text", x = 0.5, y = .7, label = allFam.sig.label3, size = 6) +
-  annotate("text", x = 0.6, y = -.8, label = "stress = 0.10", size = 6)
+  annotate("text", x = 0.6, y = -.8, label = "stress = 0.16", size = 6)
 DANoFam.nmds.plot
 ```  
 Okay so it looks like the differences between populations are driven by taxa not associated with the sulfur cycle.
 
-Let's run a PERMANOVA to double check.  
-```{r, message=FALSE}
+Running dbRDA analysis to include random effects.  
+```{r}
 # create sample df of all treatments
 all.sample.df2 <- data.frame(sample_data(DA.NoFam.ps))
 
-# calculate bc dissimilarity matrix
-all.bc2 <- distance(DA.NoFam.ps, method = "bray") 
+# create response df of relative abundances
+no.DA.fam.responses.df <- data.frame(otu_table(DA.NoFam.ps))
 
-# full model: plant.origin * sed.origin with tank.id as RF
-all.full.perm2 <-adonis2(all.bc2~plant.origin*sed.origin, strata= all.sample.df2$tank.id, data = all.sample.df2)
-all.full.perm2
+# set up permutation structure that restricts permutations within each tank (random effects)
+no.DA.fam.perm.schem <- how(nperm=999, blocks = all.sample.df2$tank.id)
+
+# Setting up dbrda. Avoiding negative eigenvalues with sqrt distances
+mod.no.DA.fam <- dbrda(no.DA.fam.responses.df ~ plant.origin*sed.origin + plant.origin + sed.origin + Condition(tank.id), all.sample.df2, dist="bray", sqrt.dist = TRUE)
+
+# running anova
+anova(mod.no.DA.fam, permutations= no.DA.fam.perm.schem, by = "margin")
+  # two-way interaction is not significant, dropping
+
+mod.no.DA.fam <- dbrda(no.DA.fam.responses.df ~ plant.origin + sed.origin + Condition(tank.id), all.sample.df2, dist="bray", sqrt.dist = TRUE)
+
+# running anova
+anova(mod.no.DA.fam, permutations= no.DA.fam.perm.schem, by = "margin")
+  # just sediment and plant origin are sig
+
+# Calculating total SumOfSquares
+total_SS <- sum(c(0.5283, 0.9687, 4.2001))
+
+# Caluclate R^2 for each term
+r2.plant <- 0.5283/total_SS
+  # 0.0927313896543856
+r2.sed <- 0.9687/total_SS
+  # 0.170033876884731
 ```  
-Plant and sediment drive differences in microbiome assembly in taxa outside of the sulfur cycling.
+Plant and sediment drive differences in microbiome assembly in taxa outside of the sulfur cycling.  
 
 # Pop distances between sediment origin, Fig C:  
 ## Data manipulation:  
@@ -276,7 +317,7 @@ colors.vec <- c("black", "white")
 # shapes for the two levels of PlantOrigin
 shapes.vec <- c(16, 21) 
 
-dist.sig.label1 <- expression("Pop, p = 6.72" %*% 10^-8)
+dist.sig.label1 <- expression("Pop, p = 0.00")
 
 #plot
 distances.plot <- ggplot(distances.sum, aes(x=population, y=distances.m)) +
@@ -285,11 +326,11 @@ distances.plot <- ggplot(distances.sum, aes(x=population, y=distances.m)) +
   geom_point( color = "black", size = 5, alpha = 0.8, position = hdodge) + 
   scale_y_continuous(expand = c(0, 0)) + 
   themes + 
-  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  scale_x_discrete(labels = c("Blake's\nLanding", "Millerton\nPoint")) +
   labs(y = expression("Bray-Curtis Pairwise Distance"), x= expression("Plant Origin")) +
   theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, .4, "cm")) +
   theme(text = element_text(size = 20)) + 
-  annotate("text", x = 1.9, y = 0.815, label = dist.sig.label1, size = 6, parse = TRUE)
+  annotate("text", x = 1.9, y = 0.815, label = dist.sig.label1, size = 6)
 distances.plot
 ```  
 Analysis:  
@@ -303,7 +344,6 @@ summary(dist.1way)
 Anova(dist.1way, type= 2) 
 ```  
 There is a difference between these two distances where MP individuals are more similar to each other across sediment types than BL individuals. 
-
 
 # Group plot of nMDS and distances:  
 ```{r}

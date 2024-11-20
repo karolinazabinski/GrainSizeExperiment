@@ -236,18 +236,18 @@ DA.fam.sum <- summaryBy(Abundance ~ plant.origin + sed.origin + Family, data=DA.
 # Create a data frame with labels for each facet
 facet_labels <- data.frame(
   Family = unique(DA.fam.sum$Family),
-  label = c("Pop, p = 0.28\nSed, p = 0.01\nPopxSed, p = 0.37",
-            "Pop, p = 0.46\nSed, p = 0.00\nPopxSed, p = 0.74", 
-            "Pop, p = 0.38\nSed, p = 0.31\nPopxSed, p = 0.67", 
-            "Pop, p = 0.58\nSed, p = 0.00\nPopxSed, p = 0.20",
-            "Pop, p = 0.68\nSed, p = 0.88\nPopxSed, p = 0.53",
-            "Pop, p = 0.29\nSed, p = 0.00\nPopxSed, p = 0.25", 
-            "Pop, p = 0.74\nSed, p = 0.01\nPopxSed, p = 0.22", 
-            "Pop, p = 0.23\nSed, p = 0.00\nPopxSed, p = 0.12",
-            "Pop, p = 0.12\nSed, p = 0.03\nPopxSed, p = 0.71", 
-            "Pop, p = 0.41\nSed, p = 0.06\nPopxSed, p = 0.85", 
-            "Pop, p = 0.21\nSed, p = 0.08\nPopxSed, p = 0.18", 
-            "Pop, p = 0.73\nSed, p = 0.00\nPopxSed, p = 0.50"),
+  label = c("Pop, p = 0.17\nSed, p = 0.02\nPopxSed, p = 0.35",
+            "Pop, p = 0.48\nSed, p = 0.00\nPopxSed, p = 0.75", 
+            "Pop, p = 0.93\nSed, p = 0.26\nPopxSed, p = 0.59", 
+            "Pop, p = 0.57\nSed, p = 0.00\nPopxSed, p = 0.23",
+            "Pop, p = 0.68\nSed, p = 0.88\nPopxSed, p = 0.56",
+            "Pop, p = 0.66\nSed, p = 0.00\nPopxSed, p = 0.42", 
+            "Pop, p = 0.65\nSed, p = 0.00\nPopxSed, p = 0.04", 
+            "Pop, p = 0.71\nSed, p = 0.00\nPopxSed, p = 0.13",
+            "Pop, p = 0.11\nSed, p = 0.04\nPopxSed, p = 0.73", 
+            "Pop, p = 0.24\nSed, p = 0.01\nPopxSed, p = 0.44", 
+            "Pop, p = 0.66\nSed, p = 0.02\nPopxSed, p = 0.49", 
+            "Pop, p = 0.69\nSed, p = 0.00\nPopxSed, p = 0.17"),
   x = c(1,2,2,2,2,2,1,2,1,1,1,2),
   y = c(Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf)
 )
@@ -261,11 +261,11 @@ DA.fam.plot <- ggplot(DA.fam.sum, aes(x = sed.origin, y = Abundance.m, group = p
   geom_errorbar(aes(ymax = Abundance.m + Abundance.se, ymin = Abundance.m - Abundance.se), width = 0, position = hdodge, color = "black") + 
   geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
   scale_y_continuous(expand = c(0, 0)) + 
-  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
-  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
-  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
   themes + 
-  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  scale_x_discrete(labels = c("Blake's\nLanding", "Millerton\nPoint")) +
   labs(y = expression("Relative Abundance"), x = expression("Sediment Origin")) +
   theme(legend.position = "bottom", plot.margin = margin(.4, .4, .4, .4, "cm")) +
   theme(text = element_text(size = 19.5)) +
@@ -273,7 +273,7 @@ DA.fam.plot <- ggplot(DA.fam.sum, aes(x = sed.origin, y = Abundance.m, group = p
   geom_text(aes(label = label, x = x, y = y, vjust = 1.2), size = 3, color = "black")
 DA.fam.plot
 
-ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/microbe-figures/root-DATaxa.png", width=13.5, height =8, DA.fam.plot)
+ggsave(filename = "/Users/carolinezabinski/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/microbe-figures/root-DATaxa.png", width=13.5, height =8, DA.fam.plot)
 ```
 It is most likely at the ASV level that there are differences in population performance.  
 
@@ -295,11 +295,11 @@ topDA.fam.plot <- ggplot(filtered.df, aes(x = sed.origin, y = Abundance.m, group
   geom_errorbar(aes(ymax = Abundance.m + Abundance.se, ymin = Abundance.m - Abundance.se), width = 0, position = hdodge, color = "black") + 
   geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
   scale_y_continuous(expand = c(0, 0)) + 
-  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
-  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("COARSE", "FINE")) +  # Set shapes manually
-  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("COARSE", "FINE")) +
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
   themes + 
-  scale_x_discrete(labels = c("COARSE", "FINE")) +
+  scale_x_discrete(labels = c("Blake's\nLanding", "Millerton\nPoint")) +
   labs(y = expression("Relative Abundance"), x = expression("Sediment Origin")) +
   theme(legend.position = "bottom", plot.margin = margin(.4, .4, .4, .4, "cm")) +
   theme(text = element_text(size = 19.5)) +
@@ -307,7 +307,7 @@ topDA.fam.plot <- ggplot(filtered.df, aes(x = sed.origin, y = Abundance.m, group
   geom_text(aes(label = label, x = x, y = y, vjust = 1.2), size = 3, color = "black")
 topDA.fam.plot
 
-ggsave(filename = "~/Box Sync/GSE/GrainSizeExperiment/microbe-figures/root-top-DATaxa.png", width=7.2, height =8, topDA.fam.plot)
+ggsave(filename = "/Users/carolinezabinski/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/microbe-figures/root-top-DATaxa.png", width=7.2, height =8, topDA.fam.plot)
 ```
 
 
@@ -317,19 +317,16 @@ For Desulfatiglandaceae.
 ```{r}
 # isolate family
 desulfatiglandaceae.df <- DA.fam.df %>% filter(Family == "Desulfatiglandaceae")
-
+# transformation
+desulfatiglandaceae.df$transformed <- sqrt(desulfatiglandaceae.df$Abundance)
 # 2 way
-desulfatiglandaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=desulfatiglandaceae.df, na.action = na.exclude)
-# 1 way
-desulfatiglandaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=desulfatiglandaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(desulfatiglandaceae.2way, desulfatiglandaceae.1way) # p= 0.3701, drop
-desulfatiglandaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=desulfatiglandaceae.df, na.action = na.exclude)
-plot(desulfatiglandaceae.full)
-qqnorm(resid(desulfatiglandaceae.full))
-hist(resid(desulfatiglandaceae.full))
-summary(desulfatiglandaceae.full) 
-Anova(desulfatiglandaceae.full)
+desulfatiglandaceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=desulfatiglandaceae.df, na.action = na.exclude)
+plot(desulfatiglandaceae.2way)
+qqnorm(resid(desulfatiglandaceae.2way))
+hist(resid(desulfatiglandaceae.2way))
+shapiro.test(resid(desulfatiglandaceae.2way)) # passes
+summary(desulfatiglandaceae.2way) 
+Anova(desulfatiglandaceae.2way, type = 2)
 ```
 For Desulfobacteraceae  
 ```{r}
@@ -338,124 +335,99 @@ Desulfobacteraceae.df <- DA.fam.df %>% filter(Family == "Desulfobacteraceae")
 
 # 2 way
 Desulfobacteraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfobacteraceae.df, na.action = na.exclude)
-# 1 way
-Desulfobacteraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobacteraceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Desulfobacteraceae.2way, Desulfobacteraceae.1way) # p= 0.7357, drop
-Desulfobacteraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobacteraceae.df, na.action = na.exclude)
-plot(Desulfobacteraceae.full)
-qqnorm(resid(Desulfobacteraceae.full))
-hist(resid(Desulfobacteraceae.full))
-summary(Desulfobacteraceae.full) 
-Anova(Desulfobacteraceae.full)
+plot(Desulfobacteraceae.2way)
+qqnorm(resid(Desulfobacteraceae.2way))
+hist(resid(Desulfobacteraceae.2way))
+shapiro.test(residuals(Desulfobacteraceae.2way)) # passes
+summary(Desulfobacteraceae.2way) 
+Anova(Desulfobacteraceae.2way, type = 2)
 ```
 For Desulfobulbaceae  
 ```{r}
 # isolate family
 Desulfobulbaceae.df <- DA.fam.df %>% filter(Family == "Desulfobulbaceae")
-
+hist(Desulfobulbaceae.df$Abundance)
+# transformation
+Desulfobulbaceae.df$transformed <- log(Desulfobulbaceae.df$Abundance)
 # 2 way
-Desulfobulbaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfobulbaceae.df, na.action = na.exclude)
-# 1 way
-Desulfobulbaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobulbaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Desulfobulbaceae.2way, Desulfobulbaceae.1way) # p= 0.6651, drop
-Desulfobulbaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfobulbaceae.df, na.action = na.exclude)
-plot(Desulfobulbaceae.full)
-qqnorm(resid(Desulfobulbaceae.full))
-hist(resid(Desulfobulbaceae.full))
-summary(Desulfobulbaceae.full) 
-Anova(Desulfobulbaceae.full)
+Desulfobulbaceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfobulbaceae.df, na.action = na.exclude)
+plot(Desulfobulbaceae.2way)
+qqnorm(resid(Desulfobulbaceae.2way))
+hist(resid(Desulfobulbaceae.2way))
+shapiro.test(residuals(Desulfobulbaceae.2way)) # passes
+summary(Desulfobulbaceae.2way) 
+Anova(Desulfobulbaceae.2way, type = 2)
 ```
 For Desulfocapsaceae  
 ```{r}
 # isolate family
 Desulfocapsaceae.df <- DA.fam.df %>% filter(Family == "Desulfocapsaceae")
-
 # 2 way
 Desulfocapsaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfocapsaceae.df, na.action = na.exclude)
-# 1 way
-Desulfocapsaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfocapsaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Desulfocapsaceae.2way, Desulfocapsaceae.1way) # p= 0.198, drop
-Desulfocapsaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfocapsaceae.df, na.action = na.exclude)
-plot(Desulfocapsaceae.full)
-qqnorm(resid(Desulfocapsaceae.full))
-hist(resid(Desulfocapsaceae.full))
-summary(Desulfocapsaceae.full) 
-Anova(Desulfocapsaceae.full)
+plot(Desulfocapsaceae.2way)
+qqnorm(resid(Desulfocapsaceae.2way))
+hist(resid(Desulfocapsaceae.2way))
+shapiro.test(resid(Desulfocapsaceae.2way)) # passes
+summary(Desulfocapsaceae.2way) 
+Anova(Desulfocapsaceae.2way, type = 2)
 ```
 For Desulfosarcinaceae  
 ```{r}
 # isolate family
 Desulfosarcinaceae.df <- DA.fam.df %>% filter(Family == "Desulfosarcinaceae")
-
 # 2 way
 Desulfosarcinaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfosarcinaceae.df, na.action = na.exclude)
-# 1 way
-Desulfosarcinaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfosarcinaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Desulfosarcinaceae.2way, Desulfosarcinaceae.1way) # p= 0.198, drop
-Desulfosarcinaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfosarcinaceae.df, na.action = na.exclude)
-plot(Desulfosarcinaceae.full)
-qqnorm(resid(Desulfosarcinaceae.full))
-hist(resid(Desulfosarcinaceae.full))
-summary(Desulfosarcinaceae.full) 
-Anova(Desulfosarcinaceae.full)
+plot(Desulfosarcinaceae.2way)
+qqnorm(resid(Desulfosarcinaceae.2way))
+hist(resid(Desulfosarcinaceae.2way))
+shapiro.test(resid(Desulfosarcinaceae.2way)) # passes
+summary(Desulfosarcinaceae.2way) 
+Anova(Desulfosarcinaceae.2way, type = 2)
 ```
 For Desulfovibrionaceae  
 ```{r}
 # isolate family
 Desulfovibrionaceae.df <- DA.fam.df %>% filter(Family == "Desulfovibrionaceae")
-
+# transformation
+Desulfovibrionaceae.df$transformed <- log(Desulfovibrionaceae.df$Abundance)
 # 2 way
-Desulfovibrionaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfovibrionaceae.df, na.action = na.exclude)
-# 1 way
-Desulfovibrionaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfovibrionaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Desulfovibrionaceae.2way, Desulfovibrionaceae.1way) # p= 0.2489, drop
-Desulfovibrionaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfovibrionaceae.df, na.action = na.exclude)
-plot(Desulfovibrionaceae.full)
-qqnorm(resid(Desulfovibrionaceae.full))
-hist(resid(Desulfovibrionaceae.full))
-summary(Desulfovibrionaceae.full) 
-Anova(Desulfovibrionaceae.full)
+Desulfovibrionaceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfovibrionaceae.df, na.action = na.exclude)
+#plot(Desulfovibrionaceae.full)
+qqnorm(resid(Desulfovibrionaceae.2way))
+hist(resid(Desulfovibrionaceae.2way))
+shapiro.test(resid(Desulfovibrionaceae.2way)) # passes
+summary(Desulfovibrionaceae.2way) 
+Anova(Desulfovibrionaceae.2way, type = 2)
 ```
 For Desulfuromonadaceae  
 ```{r}
 # isolate family
 Desulfuromonadaceae.df <- DA.fam.df %>% filter(Family == "Desulfuromonadaceae")
-
+# transformed
+Desulfuromonadaceae.df$transformed <- log(Desulfuromonadaceae.df$Abundance)
 # 2 way
-Desulfuromonadaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfuromonadaceae.df, na.action = na.exclude)
-# 1 way
-Desulfuromonadaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfuromonadaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Desulfuromonadaceae.2way, Desulfuromonadaceae.1way) # p= 0.2181, drop
-Desulfuromonadaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Desulfuromonadaceae.df, na.action = na.exclude)
-plot(Desulfuromonadaceae.full)
-qqnorm(resid(Desulfuromonadaceae.full))
-hist(resid(Desulfuromonadaceae.full))
-summary(Desulfuromonadaceae.full) 
-Anova(Desulfuromonadaceae.full)
+Desulfuromonadaceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Desulfuromonadaceae.df, na.action = na.exclude)
+plot(Desulfuromonadaceae.2way)
+qqnorm(resid(Desulfuromonadaceae.2way))
+hist(resid(Desulfuromonadaceae.2way))
+shapiro.test(residuals(Desulfuromonadaceae.2way)) # passes
+summary(Desulfuromonadaceae.2way) 
+Anova(Desulfuromonadaceae.2way, type = 2)
 ```
 For Dethiosulfatibacteraceae  
 ```{r}
 # isolate family
 Dethiosulfatibacteraceae.df <- DA.fam.df %>% filter(Family == "Dethiosulfatibacteraceae")
-
+# transformation
+Dethiosulfatibacteraceae.df$transformed <- sqrt(Dethiosulfatibacteraceae.df$Abundance)
 # 2 way
-Dethiosulfatibacteraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Dethiosulfatibacteraceae.df, na.action = na.exclude)
-# 1 way
-Dethiosulfatibacteraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Dethiosulfatibacteraceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Dethiosulfatibacteraceae.2way, Dethiosulfatibacteraceae.1way) # p= 0.1192, drop
-Dethiosulfatibacteraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Dethiosulfatibacteraceae.df, na.action = na.exclude)
-plot(Dethiosulfatibacteraceae.full)
-qqnorm(resid(Dethiosulfatibacteraceae.full))
-hist(resid(Dethiosulfatibacteraceae.full))
-summary(Dethiosulfatibacteraceae.full) 
-Anova(Dethiosulfatibacteraceae.full)
+Dethiosulfatibacteraceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Dethiosulfatibacteraceae.df, na.action = na.exclude)
+plot(Dethiosulfatibacteraceae.2way)
+qqnorm(resid(Dethiosulfatibacteraceae.2way))
+hist(resid(Dethiosulfatibacteraceae.2way))
+shapiro.test(resid(Dethiosulfatibacteraceae.2way)) # normal
+summary(Dethiosulfatibacteraceae.2way) 
+Anova(Dethiosulfatibacteraceae.2way, type = 2)
 ```
 For Sulfurimonadaceae  
 ```{r}
@@ -464,70 +436,57 @@ Sulfurimonadaceae.df <- DA.fam.df %>% filter(Family == "Sulfurimonadaceae")
 
 # 2 way
 Sulfurimonadaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Sulfurimonadaceae.df, na.action = na.exclude)
-# 1 way
-Sulfurimonadaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurimonadaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Sulfurimonadaceae.2way, Sulfurimonadaceae.1way) # p= 0.7101, drop
-Sulfurimonadaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurimonadaceae.df, na.action = na.exclude)
-plot(Sulfurimonadaceae.full)
-qqnorm(resid(Sulfurimonadaceae.full))
-hist(resid(Sulfurimonadaceae.full))
-summary(Sulfurimonadaceae.full) 
-Anova(Sulfurimonadaceae.full)
+plot(Sulfurimonadaceae.2way)
+qqnorm(resid(Sulfurimonadaceae.2way))
+hist(resid(Sulfurimonadaceae.2way))
+shapiro.test(resid(Sulfurimonadaceae.2way)) # passes
+summary(Sulfurimonadaceae.2way) 
+Anova(Sulfurimonadaceae.2way, type = 2)
 ```
 For Sulfurovaceae  
 ```{r}
 # isolate family
 Sulfurovaceae.df <- DA.fam.df %>% filter(Family == "Sulfurovaceae")
-
+# transformation
+Sulfurovaceae.df$transformed <- log(Sulfurovaceae.df$Abundance)
 # 2 way
-Sulfurovaceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Sulfurovaceae.df, na.action = na.exclude)
-# 1 way
-Sulfurovaceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurovaceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Sulfurovaceae.2way, Sulfurovaceae.1way) # p= 0.8548, drop
-Sulfurovaceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Sulfurovaceae.df, na.action = na.exclude)
-plot(Sulfurovaceae.full)
-qqnorm(resid(Sulfurovaceae.full))
-hist(resid(Sulfurovaceae.full))
-summary(Sulfurovaceae.full) 
-Anova(Sulfurovaceae.full)
+Sulfurovaceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Sulfurovaceae.df, na.action = na.exclude)
+plot(Sulfurovaceae.2way)
+qqnorm(resid(Sulfurovaceae.2way))
+hist(resid(Sulfurovaceae.2way))
+shapiro.test(resid(Sulfurovaceae.2way)) # passes
+summary(Sulfurovaceae.2way) 
+Anova(Sulfurovaceae.2way, type = 2)
 ```
 For Thioalkalispiraceae  
 ```{r}
 # isolate family
 Thioalkalispiraceae.df <- DA.fam.df %>% filter(Family == "Thioalkalispiraceae")
-
+# transformation
+Thioalkalispiraceae.df$transformed <- log(Thioalkalispiraceae.df$Abundance)
 # 2 way
-Thioalkalispiraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Thioalkalispiraceae.df, na.action = na.exclude)
-# 1 way
-Thioalkalispiraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thioalkalispiraceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Thioalkalispiraceae.2way, Thioalkalispiraceae.1way) # p= 0.1831, drop
-Thioalkalispiraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thioalkalispiraceae.df, na.action = na.exclude)
-plot(Thioalkalispiraceae.full)
-qqnorm(resid(Thioalkalispiraceae.full))
-hist(resid(Thioalkalispiraceae.full))
-summary(Thioalkalispiraceae.full) 
-Anova(Thioalkalispiraceae.full)
+Thioalkalispiraceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Thioalkalispiraceae.df, na.action = na.exclude)
+plot(Thioalkalispiraceae.2way)
+qqnorm(resid(Thioalkalispiraceae.2way))
+hist(resid(Thioalkalispiraceae.2way))
+shapiro.test(resid(Thioalkalispiraceae.2way)) # passes
+summary(Thioalkalispiraceae.2way) 
+Anova(Thioalkalispiraceae.2way, type = 2)
 ```  
 For Thiomicrospiraceae  
 ```{r}
 # isolate family
 Thiomicrospiraceae.df <- DA.fam.df %>% filter(Family == "Thiomicrospiraceae")
-
+# transformed
+Thiomicrospiraceae.df$transformed <- log(Thiomicrospiraceae.df$Abundance)
 # 2 way
-Thiomicrospiraceae.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Thiomicrospiraceae.df, na.action = na.exclude)
-# 1 way
-Thiomicrospiraceae.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thiomicrospiraceae.df, na.action = na.exclude)
-#see if 2way can drop
-anova(Thiomicrospiraceae.2way, Thiomicrospiraceae.1way) # p= 0.4999, drop
-Thiomicrospiraceae.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=Thiomicrospiraceae.df, na.action = na.exclude)
-plot(Thiomicrospiraceae.full)
-qqnorm(resid(Thiomicrospiraceae.full))
-hist(resid(Thiomicrospiraceae.full))
-summary(Thiomicrospiraceae.full) 
-Anova(Thiomicrospiraceae.full)
+Thiomicrospiraceae.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=Thiomicrospiraceae.df, na.action = na.exclude)
+plot(Thiomicrospiraceae.2way)
+qqnorm(resid(Thiomicrospiraceae.2way))
+hist(resid(Thiomicrospiraceae.2way))
+shapiro.test(resid(Thiomicrospiraceae.2way)) # normal
+summary(Thiomicrospiraceae.2way) 
+Anova(Thiomicrospiraceae.2way, type = 2)
 ```
 
 # SM Fig 5, Sulfur Oxidizers and Reducers across treatments:  
@@ -569,7 +528,7 @@ DA.cat.sum <- summaryBy(Abundance ~ plant.origin + sed.origin + category, data=D
 # Create a data frame with labels for each facet
 facet_labels <- data.frame(
   category = unique(DA.cat.sum$category),
-  label = c("Pop, p = 0.59\nSed, p = 0.00\nPopxSed, p = 0.80", "Pop, p = 0.41\nSed, p = 0.63\nPopxSed, p = 0.96"),
+  label = c("Pop, p = 0.16\nSed, p = 0.41\nPopxSed, p = 0.94", "Pop, p = 0.80\nSed, p = 0.00\nPopxSed, p = 0.81"),
   x = c(1,2),
   y = c(Inf, Inf)
 )
@@ -604,35 +563,38 @@ For the reducers
 ```{r}
 # isolate family
 reducers.df <- DA.fam.df %>% filter(category == "Reducers") 
+# summarize all families by sample id, tank and treatment
+red.collapsed.df <- reducers.df %>%
+  group_by(sample.id, tank.id, plant.origin, sed.origin) %>%  # Group by key columns
+  summarize(total_abundance = sum(Abundance, na.rm = TRUE), .groups = "drop")  # Sum Abundance
 
+# transformed
+red.collapsed.df$transformed <- log(red.collapsed.df$total_abundance)
 # 2 way
-reducers.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=reducers.df, na.action = na.exclude)
-# 1 way
-reducers.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=reducers.df, na.action = na.exclude)
-#see if 2way can drop
-anova(reducers.2way, reducers.1way) # p= 0.8031, drop
-reducers.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=reducers.df, na.action = na.exclude)
-plot(reducers.full)
-qqnorm(resid(reducers.full))
-hist(resid(reducers.full))
-summary(reducers.full) 
-Anova(reducers.full)
+reducers.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=red.collapsed.df, na.action = na.exclude)
+plot(reducers.2way)
+qqnorm(resid(reducers.2way))
+hist(resid(reducers.2way))
+shapiro.test(resid(reducers.2way)) # normal
+summary(reducers.2way) 
+Anova(reducers.2way, type = 2)
 ```  
 For the oxidizers  
 ```{r}
 # isolate family
 oxidizers.df <- DA.fam.df %>% filter(category == "Oxidizers") 
 
+# summarize by sample id
+ox.collapsed.df <- oxidizers.df %>%
+  group_by(sample.id, tank.id, plant.origin, sed.origin) %>%  # Group by key columns
+  summarize(total_abundance = sum(Abundance, na.rm = TRUE), .groups = "drop")  # Sum Abundance
+
 # 2 way
-oxidizers.2way <- lmer(Abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=oxidizers.df, na.action = na.exclude)
-# 1 way
-oxidizers.1way <- lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=oxidizers.df, na.action = na.exclude)
-#see if 2way can drop
-anova(oxidizers.2way, oxidizers.1way) # p= 0.9617, drop
-oxidizers.full <-  lmer(Abundance ~ plant.origin + sed.origin+ (1|tank.id), data=oxidizers.df, na.action = na.exclude)
-plot(oxidizers.full)
-qqnorm(resid(oxidizers.full))
-hist(resid(oxidizers.full))
-summary(oxidizers.full) 
-Anova(oxidizers.full)
+oxidizers.2way <- lmer(total_abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=ox.collapsed.df, na.action = na.exclude)
+plot(oxidizers.2way)
+qqnorm(resid(oxidizers.2way))
+hist(resid(oxidizers.2way))
+shapiro.test(resid(oxidizers.2way)) # normal
+summary(oxidizers.2way) 
+Anova(oxidizers.2way, type = 2)
 ```
