@@ -204,8 +204,8 @@ ab.ratio <- meta %>% select (SampleID:TankID, ab)
 #summary stats
 sum.ab <- summaryBy(ab ~ PlantOrigin + SedOrigin, data=ab.ratio, FUN=fun)
 
-ab.sig.label1 <- expression("Pop, p = 0.00")
-ab.sig.label2 <- paste("Sed, p = 0.00")
+ab.sig.label1 <- expression("Pop, p < 0.01")
+ab.sig.label2 <- paste("Sed, p < 0.01")
 ab.sig.label3 <- paste("PopxSed, p = 0.40")
 
 abRatio.plot <-ggplot(sum.ab, aes(x=SedOrigin, y=ab.m, group=PlantOrigin, color=PlantOrigin)) +
@@ -253,7 +253,7 @@ totalBiomass <- meta %>% select(SampleID:TankID, totalBio)
 #summary stats
 sum.totBio <- summaryBy(totalBio ~ PlantOrigin + SedOrigin, data=totalBiomass, FUN=fun)
 
-tot.Bio.sig.label1 <- expression("Pop, p = 0.00")
+tot.Bio.sig.label1 <- expression("Pop, p < 0.01")
 tot.Bio.sig.label2 <- paste("Sed, p = 0.34")
 tot.Bio.sig.label3 <- paste("PopxSed, p = 0.80")
 
@@ -293,7 +293,7 @@ term <- meta %>% select (SampleID:TankID, term.g)
 #summary stats
 sum.term <- summaryBy(term.g ~ PlantOrigin + SedOrigin, data=term, FUN=fun)
 
-term.sig.label1 <- expression("Pop, p = 0.00")
+term.sig.label1 <- expression("Pop, p < 0.01")
 term.sig.label2 <- paste("Sed, p = 0.27")
 term.sig.label3 <- paste("PopxSed, p = 0.64")
 
@@ -383,7 +383,7 @@ longRt <- meta %>% select(SampleID:TankID, LongestRoot_mm)
 sum.longestRoot <- summaryBy(LongestRoot_mm ~ PlantOrigin + SedOrigin, data=longRt, FUN=fun)
 
 longRt.sig.label1 <- expression("Pop, p = 0.57")
-longRt.sig.label2 <- expression("Sed, p = 0.00")
+longRt.sig.label2 <- expression("Sed, p < 0.01")
 longRt.sig.label3 <- paste("PopxSed, p = 0.30")
 
 # plot
@@ -405,7 +405,7 @@ longestRoot.plot <- ggplot(sum.longestRoot, aes(x=SedOrigin, y=LongestRoot_mm.m,
   annotate("text", x = 1.1, y = 117, label = longRt.sig.label3, size = 3)
 longestRoot.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/longest-root.pdf", width=6, height =4, longestRoot.plot)
+#ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/longest-root.pdf", width=6, height =4, longestRoot.plot)
 ```  
 model selection.  
 ```{r}
@@ -432,8 +432,8 @@ avgSs <- avgSs[avgSs$SampleID != "3-1", ]
 #summary stats
 sum.avgSsSize <- summaryBy(avgSsSize ~ PlantOrigin + SedOrigin, data=avgSs, FUN=fun)
 
-f1Size.sig.label1 <- expression("Pop, p = 0.00")
-f1Size.sig.label2 <- paste("Sed, p = 0.00")
+f1Size.sig.label1 <- expression("Pop, p < 0.01")
+f1Size.sig.label2 <- paste("Sed, p < 0.01")
 f1Size.sig.label3 <- paste("PopxSed, p = 0.88")
 
 # plot
@@ -547,9 +547,9 @@ rhizLength <- meta %>% select (SampleID:TankID, Rhiz_Length_mm)
 #summary stats
 sum.rhizLength <- summaryBy(Rhiz_Length_mm ~ PlantOrigin + SedOrigin, data=rhizLength, FUN=fun)
 
-rhizLength.sig.label1 <- expression("Pop, p = 0.00")
+rhizLength.sig.label1 <- expression("Pop, p < 0.01")
 rhizLength.sig.label2 <- paste("Sed, p = 0.08")
-rhizLength.sig.label3 <- paste("PopxSed, p = 0.00")
+rhizLength.sig.label3 <- paste("PopxSed, p = 0.01")
 
 # plot
 rhizLength.plot <- ggplot(sum.rhizLength, aes(x=SedOrigin, y=Rhiz_Length_mm.m, group=PlantOrigin, color=PlantOrigin)) +
@@ -592,8 +592,8 @@ sulfide.df <- meta %>% select (SampleID:TankID, sulfide.um)
 sum.sulfide <- summaryBy(sulfide.um ~ PlantOrigin + SedOrigin, data=sulfide.df, FUN=fun)
 
 sulfide.sig.label1 <- expression("Pop, p = 0.01")
-sulfide.sig.label2 <- expression("Sed, p = 0.00")
-sulfide.sig.label3 <- paste("PopxSed, p = 0.00")
+sulfide.sig.label2 <- expression("Sed, p < 0.01")
+sulfide.sig.label3 <- paste("PopxSed, p < 0.01")
 
 # plot
 sulfide.plot <- ggplot(sum.sulfide, aes(x=SedOrigin, y=sulfide.um.m, group=PlantOrigin, color=PlantOrigin)) +

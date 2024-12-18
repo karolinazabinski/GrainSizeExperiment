@@ -44,7 +44,93 @@ themes <-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.min
 # loading in function
 fun <- function(x,...) {c(m=mean(x, na.rm=T), sd=sd(x,na.rm=T), n = length(x), se=sd(x,na.rm=T)/sqrt(length(x)))}
 ```  
-# Only S Cycling Families, Fig 5A:  
+# All Families Fig 4A:  
+```{r}
+# load data
+rel.ps <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/ps_rel.rds")
+```  
+Then, I want to visualize this data in an nmds to determine whether sediment or plant origin drive microbiome assembly at the ASV level.  
+```{r, echo=TRUE, message=FALSE, results='hide'}
+# make ordination plots with weighted Bray-Curtis dissimilarity matrix 
+Fam.ord.nmds.bray <- ordinate(rel.ps,  method="NMDS", distance="bray", weighted=TRUE, trymax = 5000, strata=tank.id) 
+```  
+Checking BC ordination stats.   
+```{r}
+# check stress to make sure 2 dimensions are adequate
+  # (need more if stress ~ >.2)
+Fam.ord.nmds.bray$stress # good
+  # 0.139842
+
+# Shepards test of goodness of fit
+goodness(Fam.ord.nmds.bray) 
+  # Lists test statistics of goodness of fit for each point
+
+stressplot(Fam.ord.nmds.bray) # looks good
+  # Produces a Shepards diagram
+```   
+Plot ordination.  
+```{r}
+# create distinct color palette for populations
+colors.vec <- c("darkgoldenrod", "orchid4")
+
+# shapes for the two levels of PlantOrigin
+shapes.vec <- c(16, 21)  
+  # 16 for black dot & 21 for black dot with white fill
+
+Fam.sig.label1 <- paste("Pop, p = 0.037")
+Fam.sig.label2 <- paste("Sed, p = 0.001")
+
+Fam.nmds.plot <- plot_ordination(rel.ps, Fam.ord.nmds.bray, color="sed.origin", shape= "plant.origin") +
+  geom_point(aes(shape = plant.origin), size = 5, alpha=.7) + themes +
+  scale_fill_manual(name = "Sediment Origin", values = colors.vec, labels= c("Blake's\nLanding", "Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("Blake's\nLanding", "Millerton\nPoint")) +
+  annotate("text", x = -.5, y = .9, label = "All Families", size = 6) +
+  guides(shape = guide_legend(title = "Population Origin"))+ 
+  theme(text = element_text(size = 20)) +
+  annotate("text", x = -0.5, y = .8, label = Fam.sig.label1, size = 6) +
+  annotate("text", x = -0.5, y = .7 , label = Fam.sig.label2, size = 6) +
+  annotate("text", x = 0.6, y = -.8, label = "stress = 0.14", size = 6)
+Fam.nmds.plot
+```  
+Let's run a dbRDA which takes into account randome effects to double check.  
+```{r}
+# create sample df of all treatments
+all.sample.df <- data.frame(sample_data(rel.ps))
+
+# create response df of relative abundances
+fam.responses.df <- data.frame(otu_table(rel.ps))
+
+# set up permutation structure that restricts permutations within each tank (random effects)
+fam.perm.schem <- how(nperm=999, blocks = all.sample.df$tank.id)
+
+# Setting up dbrda. Avoiding negative eigenvalues with sqrt distances
+mod.fam <- dbrda(fam.responses.df ~ plant.origin*sed.origin + plant.origin + sed.origin + Condition(tank.id), all.sample.df, dist="bray", sqrt.dist = TRUE)
+
+# running anova
+anova(mod.fam, permutations= fam.perm.schem, by = "margin")
+  # two-way interaction is not significant, dropping
+
+mod.fam <- dbrda(fam.responses.df ~ plant.origin + sed.origin + Condition(tank.id), all.sample.df, dist="bray", sqrt.dist = TRUE)
+
+# running anova
+anova(mod.fam, permutations= fam.perm.schem, by = "margin")
+  # just sediment is significant
+
+# Get adjusted R^2 for the overall model
+RsquareAdj(mod.fam)
+
+# Calculating total SumOfSquares
+total_SS <- sum(c(0.4677, 1.1593, 4.1784))
+
+# Caluclate R^2 for each term
+r2.plant <- 0.4677/total_SS
+  # 0.08056292
+r2.sed <- 1.1593/total_SS
+  # 0.1996934
+```
+
+# Only S Cycling Families, Fig 4B:  
 First, I want to see how an nmds of all populations compare when I only include these DA families.  
 ```{r}
 # load data
@@ -85,8 +171,8 @@ colors.vec <- c("darkgoldenrod", "orchid4")
 shapes.vec <- c(16, 21)  
   # 16 for black dot & 21 for black dot with white fill
 
-DAFam.sig.label1 <- paste("Pop, p = 0.31")
-DAFam.sig.label2 <- paste("Sed, p = 0.00")
+DAFam.sig.label1 <- paste("Pop, p = 0.321")
+DAFam.sig.label2 <- paste("Sed, p = 0.001")
 
 DAFam.nmds.plot <- plot_ordination(DA.fam.ps, DAFam.ord.nmds.bray, color="sed.origin", shape= "plant.origin") +
   geom_point(aes(shape = plant.origin), size = 5, alpha=.7) + themes +
@@ -94,7 +180,7 @@ DAFam.nmds.plot <- plot_ordination(DA.fam.ps, DAFam.ord.nmds.bray, color="sed.or
   scale_shape_manual(name = "Population Origin", values = c(16,21), labels= c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
   scale_color_manual(name = "Sediment Origin", values = colors.vec, labels= c("Blake's\nLanding", "Millerton\nPoint")) +
   annotate("text", x = -.5, y = .9, label = "S Cyclers", size = 6) +
-  guides(shape = guide_legend(title = "Populatioin Origin"))+ 
+  guides(shape = guide_legend(title = "Population Origin"))+ 
   theme(text = element_text(size = 20)) +
   annotate("text", x = -0.5, y = .8, label = DAFam.sig.label1, size = 6) +
   annotate("text", x = -0.5, y = .7 , label = DAFam.sig.label2, size = 6) +
@@ -129,18 +215,11 @@ anova(mod.DA.fam, permutations= DA.fam.perm.schem, by = "margin")
 
 # Get adjusted R^2 for the overall model
 RsquareAdj(mod.DA.fam)
-
-# Calculating total SumOfSquares
-total_SS <- sum(c(0.3000, 1.6827, 4.1513))
-
-# Caluclate R^2 for each term
-r2.plant <- 0.300/total_SS
-  # 0.0489077
-r2.sed <- 1.6827/total_SS
-  # 0.2743234
+  #r2.plant = 0.3000/(0.3000+1.6827+4.1513) = 0.04890773
+  # r2.sed = 1.6827/(0.3000+1.6827+4.1513) = 0.2743234
 ```
 Okay so only sediment drives microbiome assembly when only ASVs from DA S cyclers are included.  
-# No S Cycling taxa on microbiome assembly, Fig. 5B:  
+# No S Cycling taxa on microbiome assembly, Fig. 4C:  
 ```{r}
 # subset rel.ps excluding families in fam.vec
 DA.NoFam.ps <- subset_taxa(rel.ps, !(Family %in% fam.vec))  %>% 
@@ -170,8 +249,8 @@ colors.vec <- c("darkgoldenrod", "orchid4")
 # shapes for the two levels of PlantOrigin
 shapes.vec <- c(16, 21)  
 
-allFam.sig.label1 <- paste("Pop, p = 0.01")
-allFam.sig.label2 <- paste("Sed, p = 0.00")
+allFam.sig.label1 <- paste("Pop, p = 0.007")
+allFam.sig.label2 <- paste("Sed, p = 0.001")
 
 # plot with colors for each treatment
 DANoFam.nmds.plot <- plot_ordination(DA.NoFam.ps, DANoFam.ord.nmds.bray, color="sed.origin", shape= "plant.origin") +
@@ -211,20 +290,12 @@ mod.no.DA.fam <- dbrda(no.DA.fam.responses.df ~ plant.origin + sed.origin + Cond
 
 # running anova
 anova(mod.no.DA.fam, permutations= no.DA.fam.perm.schem, by = "margin")
-  # just sediment and plant origin are sig
-
-# Calculating total SumOfSquares
-total_SS <- sum(c(0.5283, 0.9687, 4.2001))
-
-# Caluclate R^2 for each term
-r2.plant <- 0.5283/total_SS
-  # 0.0927313896543856
-r2.sed <- 0.9687/total_SS
-  # 0.170033876884731
+  # r2.plant = 0.5283/ (0.5283+0.9687+4.2001) = 0.09273139
+  # r2.sed = 0.9687/(0.5283+0.9687+4.2001) = 0.1700339
 ```  
 Plant and sediment drive differences in microbiome assembly in taxa outside of the sulfur cycling.  
 
-# Pop distances between sediment origin, Fig C:  
+# Pop distances between sediment origin:  
 ## Data manipulation:  
 Load in filtered relative abundance  ps object.  
 ```{r}
@@ -345,9 +416,9 @@ Anova(dist.1way, type= 2)
 ```  
 There is a difference between these two distances where MP individuals are more similar to each other across sediment types than BL individuals. 
 
-# Group plot of nMDS and distances:  
+# Group plot of nMDS:  
 ```{r}
-nmdsDistance.plot <- ggarrange(DAFam.nmds.plot, DANoFam.nmds.plot,distances.plot,
+nmdsDistance.plot <- ggarrange(Fam.nmds.plot, DAFam.nmds.plot, DANoFam.nmds.plot,
                     labels = c("A.", "B.", "C."), ncol=3, nrow=1, common.legend = TRUE, legend="bottom")
 nmdsDistance.plot
 

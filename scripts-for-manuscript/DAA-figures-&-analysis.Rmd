@@ -200,7 +200,7 @@ ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/microb
 
 Now, I know what families to isolate and visualize across populations.  
 
-# SM Fig 6 & Fig 5, Isolated DA families by population:
+# SM Fig 5, Isolated DA families by population:
 Now that I know which families are of interest, I want to visualize how the relative abundance of ASVs within each of those families varies across population. This is because when I ran the NMDS plot, I saw that the variation between populations is lost when you explore at higher taxonomic levels (family versus ASV).  
 
 I will only be exploring the families of interest from the DAA conducted at the family level.  
@@ -237,17 +237,17 @@ DA.fam.sum <- summaryBy(Abundance ~ plant.origin + sed.origin + Family, data=DA.
 facet_labels <- data.frame(
   Family = unique(DA.fam.sum$Family),
   label = c("Pop, p = 0.17\nSed, p = 0.02\nPopxSed, p = 0.35",
-            "Pop, p = 0.48\nSed, p = 0.00\nPopxSed, p = 0.75", 
+            "Pop, p = 0.48\nSed, p < 0.01\nPopxSed, p = 0.75", 
             "Pop, p = 0.93\nSed, p = 0.26\nPopxSed, p = 0.59", 
-            "Pop, p = 0.57\nSed, p = 0.00\nPopxSed, p = 0.23",
+            "Pop, p = 0.57\nSed, p < 0.01\nPopxSed, p = 0.23",
             "Pop, p = 0.68\nSed, p = 0.88\nPopxSed, p = 0.56",
-            "Pop, p = 0.66\nSed, p = 0.00\nPopxSed, p = 0.42", 
-            "Pop, p = 0.65\nSed, p = 0.00\nPopxSed, p = 0.04", 
-            "Pop, p = 0.71\nSed, p = 0.00\nPopxSed, p = 0.13",
+            "Pop, p = 0.66\nSed, p < 0.01\nPopxSed, p = 0.42", 
+            "Pop, p = 0.65\nSed, p < 0.01\nPopxSed, p = 0.04", 
+            "Pop, p = 0.71\nSed, p < 0.01\nPopxSed, p = 0.13",
             "Pop, p = 0.11\nSed, p = 0.04\nPopxSed, p = 0.73", 
             "Pop, p = 0.24\nSed, p = 0.01\nPopxSed, p = 0.44", 
             "Pop, p = 0.66\nSed, p = 0.02\nPopxSed, p = 0.49", 
-            "Pop, p = 0.69\nSed, p = 0.00\nPopxSed, p = 0.17"),
+            "Pop, p = 0.69\nSed, p < 0.01\nPopxSed, p = 0.17"),
   x = c(1,2,2,2,2,2,1,2,1,1,1,2),
   y = c(Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf,Inf)
 )
@@ -489,7 +489,7 @@ summary(Thiomicrospiraceae.2way)
 Anova(Thiomicrospiraceae.2way, type = 2)
 ```
 
-# SM Fig 5, Sulfur Oxidizers and Reducers across treatments:  
+# Fig 5, Average Total of Sulfur Oxidizers and Reducers across treatments:  
 Now, I want to lump all sulfur oxidizers into one category and reducers as another category. Then I want to visualize their relative abundances across treatments.  
 Load in relative abundance and add category for sulfur oxiders and reducers to their respective families.  
 ```{r}
@@ -522,13 +522,19 @@ DA.fam.df$category <- ifelse(DA.fam.df$Family %in% sreduct.vec, "Reducers", "Oxi
 ```   
 Now, find the summary stats for each category and visualize together faceted by category.  
 ```{r}
-# calculate summary stats
-DA.cat.sum <- summaryBy(Abundance ~ plant.origin + sed.origin + category, data=DA.fam.df, FUN= fun)
+# summarize all families by sample id, category, plant.origin, and sed.origin \
+collapsed.df <- DA.fam.df %>%
+  group_by(Sample, plant.origin, sed.origin, category, tank.id) %>%  # Group by key columns
+  summarize(total_abundance = sum(Abundance, na.rm = TRUE), .groups = "drop")  # Sum Abundance
+
+
+# calculate summary stats of totals for each treatment
+DA.cat.sum <- summaryBy(total_abundance ~ plant.origin + sed.origin + category, data=collapsed.df, FUN= fun)
 
 # Create a data frame with labels for each facet
 facet_labels <- data.frame(
   category = unique(DA.cat.sum$category),
-  label = c("Pop, p = 0.16\nSed, p = 0.41\nPopxSed, p = 0.94", "Pop, p = 0.80\nSed, p = 0.00\nPopxSed, p = 0.81"),
+  label = c("Pop, p = 0.16\nSed, p = 0.41\nPopxSed, p = 0.94", "Pop, p = 0.80\nSed, p < 0.01\nPopxSed, p = 0.81"),
   x = c(1,2),
   y = c(Inf, Inf)
 )
@@ -537,16 +543,16 @@ facet_labels <- data.frame(
 DA.cat.sum <- merge(DA.cat.sum, facet_labels, by = "category")
 
 # plot
-DA.cat.plot <- ggplot(DA.cat.sum, aes(x=sed.origin, y=Abundance.m, group=plant.origin, color=plant.origin)) +
+DA.cat.plot <- ggplot(DA.cat.sum, aes(x=sed.origin, y=total_abundance.m, group=plant.origin, color=plant.origin)) +
   geom_line(linetype = 1, color = "black", position = hdodge) + 
-  geom_errorbar(aes(ymax = Abundance.m + Abundance.se, ymin = Abundance.m - Abundance.se), width = 0, position = hdodge, color = "black") + 
+  geom_errorbar(aes(ymax = total_abundance.m + total_abundance.se, ymin = total_abundance.m - total_abundance.se), width = 0, position = hdodge, color = "black") + 
   geom_point(aes(fill = plant.origin, shape = plant.origin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
   scale_y_continuous(expand = c(0, 0)) + 
-  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
-  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("COARSE","FINE")) +  # Set shapes manually
-  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("COARSE","FINE")) +
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels= c("Blake's\nLanding","Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels= c("Blake's\nLanding","Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels= c("Blake's\nLanding","Millerton\nPoint")) +
   themes + 
-  scale_x_discrete(labels= c("COARSE","FINE")) +
+  scale_x_discrete(labels= c("Blake's\nLanding","Millerton\nPoint")) +
   labs(y = expression("Relative Abundance"), x= expression("Sediment Origin")) +
   theme( legend.position = "bottom",plot.margin = margin(.4, .4, .4, .4, "cm")) +
   theme(text = element_text(size = 19.5)) +
@@ -561,17 +567,12 @@ ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/microb
 
 For the reducers  
 ```{r}
-# isolate family
-reducers.df <- DA.fam.df %>% filter(category == "Reducers") 
-# summarize all families by sample id, tank and treatment
-red.collapsed.df <- reducers.df %>%
-  group_by(sample.id, tank.id, plant.origin, sed.origin) %>%  # Group by key columns
-  summarize(total_abundance = sum(Abundance, na.rm = TRUE), .groups = "drop")  # Sum Abundance
-
+# isolate just reducers
+red.df <- collapsed.df %>% filter(category == "Reducers")
 # transformed
-red.collapsed.df$transformed <- log(red.collapsed.df$total_abundance)
+red.df$transformed <- log(red.df$total_abundance)
 # 2 way
-reducers.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=red.collapsed.df, na.action = na.exclude)
+reducers.2way <- lmer(transformed ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=red.df, na.action = na.exclude)
 plot(reducers.2way)
 qqnorm(resid(reducers.2way))
 hist(resid(reducers.2way))
@@ -582,15 +583,10 @@ Anova(reducers.2way, type = 2)
 For the oxidizers  
 ```{r}
 # isolate family
-oxidizers.df <- DA.fam.df %>% filter(category == "Oxidizers") 
-
-# summarize by sample id
-ox.collapsed.df <- oxidizers.df %>%
-  group_by(sample.id, tank.id, plant.origin, sed.origin) %>%  # Group by key columns
-  summarize(total_abundance = sum(Abundance, na.rm = TRUE), .groups = "drop")  # Sum Abundance
+oxidizers.df <- collapsed.df %>% filter(category == "Oxidizers")
 
 # 2 way
-oxidizers.2way <- lmer(total_abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=ox.collapsed.df, na.action = na.exclude)
+oxidizers.2way <- lmer(total_abundance ~ plant.origin*sed.origin + plant.origin + sed.origin+ (1|tank.id), data=oxidizers.df, na.action = na.exclude)
 plot(oxidizers.2way)
 qqnorm(resid(oxidizers.2way))
 hist(resid(oxidizers.2way))
