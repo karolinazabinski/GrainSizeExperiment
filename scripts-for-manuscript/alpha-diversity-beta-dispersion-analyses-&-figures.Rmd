@@ -56,10 +56,9 @@ shapes.vec <- c(16, 21)
 
 Load in filtered ps object.  
 ```{r}
-singletons.ps <- readRDS("~/Box Sync/GSE/GrainSizeExperiment/output/ps.no0.rds")
+singletons.ps <- readRDS("~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/output/ps.no0.rds")
 singletons.ps %>% otu_table %>% print(n=5) # looks good
 length(which(taxa_sums(singletons.ps) == 1))
-  # 3225
 ```  
 Create sample data frame.  
 ```{r}
@@ -341,8 +340,8 @@ Anova(disp.2way, type= 2)
 # Grouping alpha diversity figures:  
 ```{r}
 alphaTraits.plot <- ggarrange(Sing.shannon.plot, Sing.Hillq1.plot,Sing.invSimp.plot,disp.plot,
-                    labels = c("A.", "B.", "C.", "D."), ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
+                    labels = c("a.", "b.", "c.", "d."), ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
 alphaTraits.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/alpha-diversity-traits.png", width=8, height =8, alphaTraits.plot)
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/SI-fig3.png", width=8, height =8, alphaTraits.plot)
 ```  

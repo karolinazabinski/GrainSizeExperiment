@@ -143,6 +143,7 @@ fam.vec <- c( "Desulfatiglandaceae", "Desulfobacteraceae", "Desulfobulbaceae", "
 DA.fam.ps <- subset_taxa(rel.ps, Family %in% fam.vec)  %>% 
             filter_taxa( function(x) sum(x) > 0, TRUE)
 ```  
+
 Then, I want to visualize this data in an nmds to determine whether sediment or plant origin drive microbiome assembly at the ASV level.  
 ```{r, echo=TRUE, message=FALSE, results='hide'}
 # make ordination plots with weighted Bray-Curtis dissimilarity matrix 
@@ -227,6 +228,7 @@ DA.NoFam.ps <- subset_taxa(rel.ps, !(Family %in% fam.vec))  %>%
 # make ordination plots with weighted Bray-Curtis dissimilarity matrix 
 DANoFam.ord.nmds.bray <- ordinate(DA.NoFam.ps,  method="NMDS", distance="bray", weighted=TRUE, trymax = 5000, strata=tank.id) 
 ```  
+
 Checking BC ordination stats.  
 ```{r}
 # check stress to make sure 2 dimensions are adequate
@@ -419,8 +421,8 @@ There is a difference between these two distances where MP individuals are more 
 # Group plot of nMDS:  
 ```{r}
 nmdsDistance.plot <- ggarrange(Fam.nmds.plot, DAFam.nmds.plot, DANoFam.nmds.plot,
-                    labels = c("A.", "B.", "C."), ncol=3, nrow=1, common.legend = TRUE, legend="bottom")
+                    labels = c("a.", "b.", "c."), ncol=3, nrow=1, common.legend = TRUE, legend="bottom")
 nmdsDistance.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/nmds-distance.png", width=15, height =6, nmdsDistance.plot)
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/fig4.png", width=15, height =6, nmdsDistance.plot)
 ```

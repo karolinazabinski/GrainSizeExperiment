@@ -141,7 +141,7 @@ growth.plot <- ggplot(sum.growth, aes(x = SedOrigin, y = growthRate.m, group = P
   scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
   themes + 
   scale_x_discrete(labels = c("Blake's\nLanding", "Millerton\nPoint")) +
-  labs(y = expression(F[0]~Growth~Rate~(cm/day)), x = expression("Sediment Origin")) +
+  labs(y = expression(F[0]~Growth~Rate~(mm/day)), x = expression("Sediment Origin")) +
   theme(legend.position = c(0.86, 0.85), plot.margin = margin(.4, .4, .4, .4, "cm")) +
   theme(text = element_text(size = 20)) + 
     annotate("text", x = 1.1, y = 55.3, label = growth.sig.label1, size = 3) +
@@ -159,6 +159,50 @@ hist(resid(growth.2way))
 shapiro.test(resid(growth.2way)) # passes
 summary(growth.2way) 
 Anova(growth.2way) #no differences
+```  
+## Productivity:  
+Plotting.  
+```{r}
+productivity.data <- meta %>% select (SampleID:TankID, productivity)
+
+#summary stats
+sum.prod <- summaryBy(productivity ~ PlantOrigin + SedOrigin, data=productivity.data, FUN=fun)
+
+#growth.sig.label1 <- paste("Pop, p = 0.64")
+#growth.sig.label2 <- paste("Sed, p = 0.20")
+#growth.sig.label3 <- paste("PopxSed, p = 0.32")
+
+#plot
+productivity.plot <- ggplot(sum.prod, aes(x = SedOrigin, y = productivity.m, group = PlantOrigin, color = PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = productivity.m + productivity.se, ymin = productivity.m - productivity.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(2, 4)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  themes + 
+  scale_x_discrete(labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  labs(y = expression(F[0]~Productivity~(cm^2/day)), x = expression("Sediment Origin")) +
+  theme(legend.position = c(0.86, 0.85), plot.margin = margin(.4, .4, .4, .4, "cm")) +
+  theme(text = element_text(size = 20))  
+  # annotate("text", x = 1.1, y = 55.3, label = growth.sig.label1, size = 3) +
+  #annotate("text", x = 1.1, y = 54.6, label = growth.sig.label2, size = 3) +
+ # annotate("text", x = 1.1, y = 54, label = growth.sig.label3, size = 3)
+productivity.plot
+```
+Model selection:  
+```{r}
+hist(productivity.data$productivity)
+# transform
+productivity.data$transformed <- log(productivity.data$productivity)
+productivity.2way <- lmer(productivity ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin+ (1|TankID) , data=productivity.data, na.action = na.exclude)
+plot(productivity.2way)
+qqnorm(resid(productivity.2way))
+hist(resid(productivity.2way))
+shapiro.test(resid(productivity.2way)) # passes
+summary(productivity.2way) 
+Anova(productivity.2way) #no differences
 ```  
 ## No. SS:  
 Plotting:  
@@ -240,10 +284,10 @@ Anova(ab.2way)
 plot growth rate and ss side by side with legend on bottom.  
 ```{r}
 growthSS.plot <- ggarrange(growth.plot, ssCount.plot,
-                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
-growthSS.plot
+                    labels = c("a.", "b."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+#growthSS.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/noEffects.png", width=7, height =6, growthSS.plot)
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/SI-fig1.png", width=7, height =6, growthSS.plot)
 ```
 
 ## Total Biomass:  
@@ -368,11 +412,11 @@ Anova(rootBund.2way)
 ```  
 ## Group plot of fixed traits (Fig. 1):  
 ```{r}
-fixedTraits.plot <- ggarrange(totBio.plot, term.plot,rootBund.plot,
-                    labels = c("A.", "B.", "C."), ncol=3, nrow=1, common.legend = TRUE, legend="bottom")
+fixedTraits.plot <- ggarrange(totBio.plot, term.plot,rootBund.plot,rhizNodes.plot,
+                    labels = c("a.", "b.", "c.", "d."), ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
 fixedTraits.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/fixed-plant-traits.png", width= 9, height = 5, fixedTraits.plot)
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/fig1.png", width= 9, height = 10, fixedTraits.plot)
 ```
 
 ## Root Length:  
@@ -490,10 +534,10 @@ Anova(side.2way, type = 2)
 ## Group plot of additive traits (SM Fig 2):  
 ```{r}
 additiveTraits.plot <- ggarrange(avgSs.plot, abRatio.plot,
-                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+                    labels = c("a.", "b."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
 additiveTraits.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/additive-plant-traits.png", width=6, height =5, additiveTraits.plot)
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/SI-fig2.png", width=6, height =5, additiveTraits.plot)
 
 ```
 ## ASV Richness:  
@@ -534,10 +578,10 @@ Sing.rich.plot
 ## Group plot of plastic traits (Fig. 2):  
 ```{r}
 plasticTraits.plot <- ggarrange(longestRoot.plot, Sing.rich.plot,
-                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+                    labels = c("a.", "b."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
 plasticTraits.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/plastic-plant-traits.png", width=6, height =5, plasticTraits.plot)
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/fig2.png", width=6, height =5, plasticTraits.plot)
 ```
 ## Rhizome length:  
 plotting.  
@@ -631,10 +675,10 @@ Anova(sulfide.2way, type = 2)
 ## Group plot of interactive traits (Fig 3):  
 ```{r}
 interactiveTraits.plot <- ggarrange(rhizLength.plot, sulfide.plot,
-                    labels = c("A.", "B."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+                    labels = c("a.", "b."), ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
 interactiveTraits.plot
 
-ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/interactive-plant-traits.png", width=6, height =5, interactiveTraits.plot)
+ggsave(filename = "~/Library/CloudStorage/Box-Box/GSE/GrainSizeExperiment/plant-figures/fig3.png", width=10, height =5, interactiveTraits.plot)
 ```  
 # Below biomass: just lmer
 ```{r}
@@ -648,5 +692,99 @@ hist(resid(below.2way))
 shapiro.test(resid(below.2way)) # pass
 summary(below.2way) 
 Anova(below.2way, type = 2)
-```
+```  
+## Rhizome Nodes Production:  
+plotting.  
+```{r}
+# prep data
+rhizNodes <- meta %>% select(SampleID:TankID, No_RootBundles) %>%
+  mutate(rhizNodes = No_RootBundles/2,
+         rhizNodesRate = rhizNodes/15)
+  
+#summary stats
+sum.rhizNodes <- summaryBy(rhizNodesRate ~ PlantOrigin + SedOrigin, data=rhizNodes, FUN=fun)
+
+rhizNodes.sig.label1 <- expression("Pop, p < 0.01")
+rhizNodes.sig.label2 <- paste("Sed, p = 0.62")
+rhizNodes.sig.label3 <- paste("PopxSed, p = 0.37")
+
+# plot
+rhizNodes.plot <- ggplot(sum.rhizNodes, aes(x=SedOrigin, y=rhizNodesRate.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = rhizNodesRate.m + rhizNodesRate.se, ymin = rhizNodesRate.m - rhizNodesRate.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0.2,.5)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  themes + 
+  scale_x_discrete(labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  labs(y = expression("Node Production Rate\n       (nodes/wk)"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85),plot.margin = margin(.4, .4, .4, 1, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 2, y = 0.49, label = rhizNodes.sig.label1, size = 3) +
+  annotate("text", x = 2, y = 0.48, label = rhizNodes.sig.label2, size = 3) +
+  annotate("text", x = 2, y = 0.47, label = rhizNodes.sig.label3, size = 3)
+
+rhizNodes.plot
+```  
+model.  
+```{r}
+rhizNode.2way  <- lmer(rhizNodesRate ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=rhizNodes, na.action = na.exclude)
+plot(rhizNode.2way)
+qqnorm(resid(rhizNode.2way))
+hist(resid(rhizNode.2way))
+shapiro.test(resid(rhizNode.2way)) # pass
+summary(rhizNode.2way) 
+Anova(rhizNode.2way, type = 2)
+```  
+
+## Rhizome Growth Rate:  
+plotting.  
+```{r}
+# prep data
+rhizGrowth.df <- meta %>% select(SampleID:TankID, Rhiz_Length_mm, totalBio) %>%
+  mutate(rhizGrowth = Rhiz_Length_mm/15,
+         rhizRelGrowth = rhizGrowth/totalBio * 100)
+  
+#summary stats
+sum.rhizGrowth<- summaryBy(rhizGrowth ~ PlantOrigin + SedOrigin, data=rhizGrowth.df, FUN=fun)
+
+rhizGrowth.sig.label1 <- expression("Pop, p < 0.01")
+rhizGrowths.sig.label2 <- paste("Sed, p = 0.05")
+rhizGrowth.sig.label3 <- paste("PopxSed, p < 0.01")
+
+# plot
+rhizGrowth.plot <- ggplot(sum.rhizGrowth, aes(x=SedOrigin, y=rhizGrowth.m, group=PlantOrigin, color=PlantOrigin)) +
+  geom_line(linetype = 1, color = "black", position = hdodge) + 
+  geom_errorbar(aes(ymax = rhizGrowth.m + rhizGrowth.se, ymin = rhizGrowth.m - rhizGrowth.se), width = 0, position = hdodge, color = "black") + 
+  geom_point(aes(fill = PlantOrigin, shape = PlantOrigin), color = "black", size = 5, alpha = 0.8, position = hdodge) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0,10)) + 
+  scale_fill_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  scale_shape_manual(name = "Population Origin", values = shapes.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +  # Set shapes manually
+  scale_color_manual(name = "Population Origin", values = colors.vec, labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  themes + 
+  scale_x_discrete(labels = c("Blake's\nLanding", "Millerton\nPoint")) +
+  labs(y = expression("Rhizome Growth Rate\n          (mm/wk)"), x= expression("Sediment Origin")) +
+  theme( legend.position = c(0.86, 0.85), plot.margin = margin(.4, .4, .4, 1, "cm")) +
+  theme(text = element_text(size = 20)) + 
+    annotate("text", x = 2, y = 9.6, label = rhizGrowth.sig.label1, size = 3) +
+  annotate("text", x = 2, y = 9.2, label = rhizGrowths.sig.label2, size = 3) +
+  annotate("text", x = 2, y = 8.8, label = rhizGrowth.sig.label3, size = 3)
+rhizGrowth.plot
+```  
+model.  
+```{r}
+rhizElong.2way  <- lmer(rhizGrowth ~ PlantOrigin*SedOrigin + PlantOrigin + SedOrigin + (1|TankID), data=rhizGrowth.df, na.action = na.exclude)
+plot(rhizElong.2way)
+qqnorm(resid(rhizElong.2way))
+hist(resid(rhizElong.2way))
+shapiro.test(resid(rhizElong.2way)) # pass
+summary(rhizElong.2way) 
+Anova(rhizElong.2way, type = 2)
+```  
+
+
+
+
 
